@@ -1,0 +1,11 @@
+[package]
+name = "mia"
+version = "0.1.0"
+authors = ["Anton <singaraiona@gmail.com>"]
+
+[dependencies]
+nom = "^3.2"
+
+[[bin]]
+name = "mia"
+path = "apps/mia.rs"
