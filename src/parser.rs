@@ -1,7 +1,7 @@
 use nom::*;
 use std::str;
 use std::str::FromStr;
-use ast::AST;
+use ast::{Verb, AST};
 
 // Literals
 fn is_bin_digit(byte: u8) -> bool { byte == b'0' || byte == b'1' }
@@ -22,11 +22,10 @@ named!(long2<i64>,    map_res!(map_res!(long_literal2,  str::from_utf8), |s| { i
 named!(long8<i64>,    map_res!(map_res!(long_literal8,  str::from_utf8), |s| { i64::from_str_radix(s, 8) }));
 named!(long10<i64>,   map_res!(map_res!(long_literal10, str::from_utf8), |s| { i64::from_str_radix(s, 10) }));
 named!(long16<i64>,   map_res!(map_res!(long_literal16, str::from_utf8), |s| { i64::from_str_radix(s, 16) }));
-named!(
-    long<i64>,
+named!(long<i64>,
     alt!(
-        preceded!(tag!("#b"), long2) |
-        preceded!(tag!("#o"), long8) |
+        preceded!(tag!("#b"), long2)        |
+        preceded!(tag!("#o"), long8)        |
         preceded!(opt!(tag!("#d")), long10) |
         preceded!(tag!("#x"), long16)
     )
@@ -52,6 +51,17 @@ named!(
     )
 );
 
+named!(
+    verb<Verb>,
+    alt_complete!(
+        tag!("+") => { |_| Verb::Plus   } |
+        tag!("-") => { |_| Verb::Minus  } |
+        tag!("*") => { |_| Verb::Times  } |
+        tag!("/") => { |_| Verb::Divide } |
+        tag!("'") => { |_| Verb::Quote  }
+    )
+);
+
 // AST
 named!(
     expr<AST>,
@@ -61,12 +71,13 @@ named!(
         float   => { |x| AST::Float(x)            } |
         string  => { |x| AST::String(Box::new(x)) } |
         symbol  => { |x| AST::Symbol(Box::new(x)) } |
+        verb    => { |x| AST::Verb(x)             } |
         list    => { |x| x }
     )
 );
 
 named!(exprs<AST>, map!(many0!(ws!(expr)), |v| AST::List(Box::new(v))));
-named!(list<AST>, do_parse!(tag!("(") >> l: exprs >> tag!(")") >> (l)));
-named!(program<AST>, terminated!(exprs, eof!()));
+named!(list<AST>,  do_parse!(tag!("(") >> l: exprs >> tag!(")") >> (l)));
+//
+named!(pub parse<AST>, terminated!(exprs, eof!()));
 
-pub fn parse(i: &[u8]) -> IResult<&[u8], AST> { program(i) }
