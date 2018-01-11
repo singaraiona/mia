@@ -1,12 +1,9 @@
-#[macro_use]
 extern crate mia;
-#[macro_use]
 extern crate nom;
 
 use nom::IResult;
 use std::io::{self, Read, Write};
 use mia::parser;
-use mia::ast::AST;
 
 pub fn ps1(s: &str) {
     print!("{}", s);
@@ -22,8 +19,8 @@ fn main() {
             break;
         }
         match parser::parse(&input[..size]) {
-        IResult::Done(_, a) => println!("{}", a),
-        x => println!("{:?}", x),
+            IResult::Done(_, a) => println!("{}", a),
+            x => println!("{:?}", x),
         }
         ps1(">> ");
     }
