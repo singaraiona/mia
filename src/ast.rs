@@ -5,19 +5,7 @@ pub enum Error {
     Nyi,
 }
 
-#[derive(Debug, Clone)]
-pub enum Verb {
-    Plus,
-    Minus,
-    Times,
-    Divide,
-    Quote
-}
-
-#[derive(Debug, Clone)]
-pub enum Function {
-    Quote,
-}
+pub type Function = fn(AST) -> Result<AST, Error>;
 
 #[derive(Debug, Clone)]
 pub enum AST {
@@ -26,7 +14,7 @@ pub enum AST {
     Float(f64),
     String(Box<String>),
     Symbol(Box<String>),
-    Verb(Verb),
+    Function(Function),
     List(Box<Vec<AST>>),
     Nil,
 }
@@ -39,7 +27,7 @@ impl fmt::Display for AST {
             AST::Float(ref x)  => write!(f, "{}", x),
             AST::String(ref x) => write!(f, "\"{}\"", x),
             AST::Symbol(ref x) => write!(f, "{}", x),
-            AST::Verb(ref x)   => write!(f, "{:?}", x),
+            AST::Function(ref x)   => write!(f, "{:?}", x),
             AST::List(ref x)   => write!(f, "({})", x.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().join(" ")),
             AST::Nil           => write!(f, "Nil"),
         }

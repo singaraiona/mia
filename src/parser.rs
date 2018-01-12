@@ -1,7 +1,8 @@
 use nom::*;
 use std::str;
 use std::str::FromStr;
-use ast::{Verb, AST};
+use ast::{Function, AST};
+use func;
 
 // Literals
 fn is_bin_digit(byte: u8) -> bool { byte == b'0' || byte == b'1' }
@@ -32,7 +33,6 @@ named!(long<i64>,
 );
 named!(string<String>, delimited!(tag!("\""), string_content, tag!("\"")));
 named!(symbol<String>, map!(map_res!(alphanumeric, str::from_utf8), |s| s.to_string()));
-
 named!(
     string_content<String>,
     map!(
@@ -52,13 +52,13 @@ named!(
 );
 
 named!(
-    verb<Verb>,
+    func<Function>,
     alt_complete!(
-        tag!("+") => { |_| Verb::Plus   } |
-        tag!("-") => { |_| Verb::Minus  } |
-        tag!("*") => { |_| Verb::Times  } |
-        tag!("/") => { |_| Verb::Divide } |
-        tag!("'") => { |_| Verb::Quote  }
+        tag!("+") => { |_| func::plus   as Function } |
+        tag!("-") => { |_| func::minus  as Function } |
+        tag!("*") => { |_| func::times  as Function } |
+        tag!("/") => { |_| func::divide as Function } |
+        tag!("'") => { |_| func::quote  as Function }
     )
 );
 
@@ -71,13 +71,13 @@ named!(
         float   => { |x| AST::Float(x)            } |
         string  => { |x| AST::String(Box::new(x)) } |
         symbol  => { |x| AST::Symbol(Box::new(x)) } |
-        verb    => { |x| AST::Verb(x)             } |
+        func    => { |x| AST::Function(x)         } |
         list    => { |x| x }
     )
 );
 
-named!(exprs<AST>, map!(many0!(ws!(expr)), |v| AST::List(Box::new(v))));
-named!(list<AST>,  do_parse!(tag!("(") >> l: exprs >> tag!(")") >> (l)));
+named!(exprs<Vec<AST>>, many0!(ws!(expr)));
+named!(list<AST>,  do_parse!(tag!("(") >> l: map!(exprs, |v| AST::List(Box::new(v))) >> tag!(")") >> (l)));
 //
-named!(pub parse<AST>, terminated!(exprs, eof!()));
+named!(pub parse<Vec<AST>>, terminated!(exprs, eof!()));
 

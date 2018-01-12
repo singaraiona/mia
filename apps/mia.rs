@@ -1,4 +1,5 @@
 extern crate mia;
+#[macro_use]
 extern crate nom;
 
 use nom::IResult;
@@ -21,11 +22,15 @@ fn main() {
         }
         match parser::parse(&input[..size]) {
             IResult::Done(_, a) => {
-                match interpreter::eval(&a) {
+                match interpreter::fold_list(a.as_slice()) {
                     Ok(e) => println!("-> {}", e),
                     Err(e) => println!("-> {:?}", e)
                 }
             },
+            //IResult::Error(e) => {
+                //let p = error_position!(e);
+                //println!("E: {:?}", p);
+            //}
             x => println!("{:?}", x),
         }
         ps1(": ");
