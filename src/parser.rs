@@ -52,7 +52,7 @@ named!(
 );
 
 named!(
-    func<Function>,
+    func<Func>,
     alt_complete!(
         tag!("+") => { |_| func::plus   as Function } |
         tag!("-") => { |_| func::minus  as Function } |
