@@ -85,9 +85,8 @@ named!(
     )
 );
 
-named!(exprs<Vec<AST>>, many0!(ws!(expr)));
-named!(list<AST>,  do_parse!(tag!("(") >> l: map!(exprs, |v| AST::List(Box::new(v))) >> tag!(")") >> (l)));
+named!(list<AST>,  do_parse!(tag!("(") >> l: map!(parse, |v| AST::List(Box::new(v))) >> tag!(")") >> (l)));
 named!(quote<AST>, do_parse!(tag!("'") >> l: map!(expr,  |v| AST::List(Box::new(vec![AST::SpecialForm(special::quote), v]))) >> (l)));
 //
-named!(pub parse<Vec<AST>>, terminated!(exprs, eof!()));
+named!(pub parse<Vec<AST>>, many0!(ws!(expr)));
 
