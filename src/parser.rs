@@ -65,7 +65,6 @@ named!(
 named!(
     spec<SpecialForm>,
     alt_complete!(
-        tag!("'")     => { |_| special::quote  as SpecialForm } |
         tag!("quote") => { |_| special::quote  as SpecialForm }
     )
 );
@@ -74,6 +73,7 @@ named!(
 named!(
     expr<AST>,
     alt_complete!(
+        quote   => { |x| x                        } |
         boolean => { |x| AST::Bool(x)             } |
         long    => { |x| AST::Long(x)             } |
         float   => { |x| AST::Float(x)            } |
@@ -85,8 +85,9 @@ named!(
     )
 );
 
-named!(exprs<AST>, map!(many0!(ws!(expr)), |v| AST::List(Box::new(v))));
-named!(list<AST>,  do_parse!(tag!("(") >> l: exprs >> tag!(")") >> (l)));
+named!(exprs<Vec<AST>>, many0!(ws!(expr)));
+named!(list<AST>,  do_parse!(tag!("(") >> l: map!(exprs, |v| AST::List(Box::new(v))) >> tag!(")") >> (l)));
+named!(quote<AST>, do_parse!(tag!("'") >> l: map!(expr,  |v| AST::List(Box::new(vec![AST::SpecialForm(special::quote), v]))) >> (l)));
 //
-named!(pub parse<AST>, terminated!(exprs, eof!()));
+named!(pub parse<Vec<AST>>, terminated!(exprs, eof!()));
 

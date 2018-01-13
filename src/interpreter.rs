@@ -11,13 +11,13 @@ pub fn eval(ast: AST) -> Result<AST, Error> {
     match &ast {
         &AST::List(ref l) if !l.is_empty() => {
             match l[0] {
-                AST::Symbol(ref s)  => { return Err(error("symbol eval: nyi."));     }
+                AST::Symbol(ref s)  => { return eval_error!("symbol eval: nyi.");     }
                 AST::Function(f)    => { return (f)(eval_list(&l[1..])?);            }
                 AST::SpecialForm(f) => { return (f)(&l[1..]);                        }
-                _                   => { return Err(error("car must me callable.")); }
+                _                   => { return eval_error!("car must me callable."); }
             }
         }
-        &AST::Symbol(ref s) => { return Err(error("symbol eval: nyi.")); }
+        &AST::Symbol(ref s) => { return eval_error!("symbol eval: nyi."); }
         _ => {},
     }
     Ok(ast)

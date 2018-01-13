@@ -1,7 +1,7 @@
 use std::fmt;
 
 #[derive(Debug)]
-pub struct Error(String);
+pub struct Error(pub String);
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -9,7 +9,14 @@ impl fmt::Display for Error {
     }
 }
 
-pub fn error(s: &str) -> Error { Error(s.to_string()) }
+#[macro_export]
+macro_rules! error_fmt {
+    ($x:expr)                => { format!("{}", $x)                         };
+    ($x:expr, $($y:expr),+)  => { format!("{} {}", $x, error_fmt!($($y),+)) }
+}
+
+#[macro_export]
+macro_rules! eval_error { ($($x:expr),+) => { Err($crate::ast::Error(error_fmt!($($x),+))) }}
 
 pub type Function    = fn(AST)    -> Result<AST, Error>;
 pub type SpecialForm = fn(&[AST]) -> Result<AST, Error>;

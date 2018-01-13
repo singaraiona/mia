@@ -16,7 +16,7 @@ fn main() {
         let size = io::stdin().read(&mut input).expect("STDIN error.");
         match parser::parse(&input[..size]) {
             IResult::Done(_, a) => {
-               match interpreter::eval(a) {
+               match interpreter::fold_list(a.as_slice()) {
                     Ok(e) => println!("-> {}", e),
                     Err(e) => println!("-> {}", e)
                 }
