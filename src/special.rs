@@ -1,4 +1,4 @@
-use ast::*;
+use mia::*;
 
 pub fn quote(args: &[AST]) -> Result<AST, Error> {
     match args.len() {

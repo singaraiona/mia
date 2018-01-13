@@ -1,4 +1,4 @@
-use ast::*;
+use mia::*;
 
 pub fn fold_list(list: &[AST]) -> Result<AST, Error> { list.iter().try_fold(AST::Nil, |_, x| eval(x.clone())) }
 

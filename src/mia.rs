@@ -16,7 +16,7 @@ macro_rules! error_fmt {
 }
 
 #[macro_export]
-macro_rules! eval_error { ($($x:expr),+) => { Err($crate::ast::Error(error_fmt!($($x),+))) }}
+macro_rules! eval_error { ($($x:expr),+) => { Err($crate::mia::Error(error_fmt!($($x),+))) }}
 
 pub type Function    = fn(AST)    -> Result<AST, Error>;
 pub type SpecialForm = fn(&[AST]) -> Result<AST, Error>;

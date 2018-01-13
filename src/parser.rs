@@ -1,7 +1,7 @@
 use nom::*;
 use std::str;
 use std::str::FromStr;
-use ast::{Function, SpecialForm, AST};
+use mia::{Function, SpecialForm, AST};
 use function;
 use special;
 

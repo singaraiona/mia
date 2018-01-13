@@ -4,7 +4,7 @@
 extern crate nom;
 
 #[macro_use]
-pub mod ast;
+pub mod mia;
 pub mod parser;
 pub mod interpreter;
 pub mod function;
