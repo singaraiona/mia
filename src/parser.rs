@@ -1,7 +1,7 @@
 use nom::*;
 use std::str;
 use std::str::FromStr;
-use mia::{Function, SpecialForm, AST};
+use mia::{Function, SpecialForm, AST, new_symbol};
 use function;
 use special;
 
@@ -15,7 +15,6 @@ named!(long_literal2,  recognize!(do_parse!(sign >> bin_digit >> ())));
 named!(long_literal8,  recognize!(do_parse!(sign >> oct_digit >> ())));
 named!(long_literal10, recognize!(do_parse!(sign >> digit >> ())));
 named!(long_literal16, recognize!(do_parse!(sign >> hex_digit >> ())));
-named!(symbol_literal, recognize!(do_parse!(alphanumeric >> ())));
 
 // Base types
 named!(boolean<bool>, alt!(tag!("#t") => { |_| true } | tag!("#f") => { |_| false }));
@@ -73,15 +72,15 @@ named!(
 named!(
     expr<AST>,
     alt_complete!(
-        quote   => { |x| x                        } |
-        boolean => { |x| AST::Bool(x)             } |
-        long    => { |x| AST::Long(x)             } |
-        float   => { |x| AST::Float(x)            } |
-        string  => { |x| AST::String(Box::new(x)) } |
-        func    => { |x| AST::Function(x)         } |
-        spec    => { |x| AST::SpecialForm(x)      } |
-        symbol  => { |x| AST::Symbol(Box::new(x)) } |
-        list    => { |x| x }
+        quote   => { |x| x                          } |
+        boolean => { |x| AST::Bool(x)               } |
+        long    => { |x| AST::Long(x)               } |
+        float   => { |x| AST::Float(x)              } |
+        string  => { |x| AST::String(Box::new(x))   } |
+        func    => { |x| AST::Function(x)           } |
+        spec    => { |x| AST::SpecialForm(x)        } |
+        symbol  => { |x| AST::Symbol(new_symbol(x)) } |
+        list    => { |x| x                          }
     )
 );
 

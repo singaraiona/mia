@@ -1,4 +1,5 @@
 use std::fmt;
+use std::cell::UnsafeCell;
 
 #[derive(Debug)]
 pub struct Error(pub String);
@@ -27,7 +28,7 @@ pub enum AST {
     Long(i64),
     Float(f64),
     String(Box<String>),
-    Symbol(Box<String>),
+    Symbol(usize),
     Function(Function),
     SpecialForm(SpecialForm),
     VecLong(Box<Vec<i64>>),
@@ -42,7 +43,7 @@ impl fmt::Display for AST {
             AST::Long(ref x)        => write!(f, "{}", x),
             AST::Float(ref x)       => write!(f, "{}", x),
             AST::String(ref x)      => write!(f, "\"{}\"", x),
-            AST::Symbol(ref x)      => write!(f, "{}", x),
+            AST::Symbol(x)          => write!(f, "{}", symbol_to_str(x)),
             AST::Function(ref x)    => write!(f, "{:?}", x),
             AST::SpecialForm(ref x) => write!(f, "{:?}", *x as i64),
             AST::List(ref x)        => write!(f, "({})", x.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().join(" ")),
@@ -51,3 +52,17 @@ impl fmt::Display for AST {
         }
     }
 }
+
+thread_local! { pub static _SYMBOLS: UnsafeCell<Vec<String>> = UnsafeCell::new(Vec::new()); }
+
+pub fn new_symbol(sym: String) -> usize {
+    unsafe {
+        _SYMBOLS.with(|s| {
+            let syms = &mut (*s.get());
+            for (i, x) in syms.iter().enumerate() { if *x == sym { return i; } }
+            syms.push(sym);
+            syms.len() - 1
+        })
+    }
+}
+pub fn symbol_to_str(sym: usize) -> &'static str { unsafe { _SYMBOLS.with(|s| &(*s.get())[sym]) } }

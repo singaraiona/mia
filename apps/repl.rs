@@ -1,5 +1,4 @@
 extern crate mia;
-#[macro_use]
 extern crate nom;
 
 use nom::IResult;
@@ -11,7 +10,7 @@ use std::cell::UnsafeCell;
 fn ps1() { print!(": "); io::stdout().flush().unwrap(); }
 
 fn main() {
-    let mut input   = UnsafeCell::new(vec![0u8;4096]);
+    let input       = UnsafeCell::new(vec![0u8;4096]);
     let mut parsed  = vec![];
     let mut size;
     ps1();
@@ -20,10 +19,6 @@ fn main() {
         loop {
             match unsafe { parser::parse(&(*input.get())[..size]) } {
                 IResult::Done(i, a) => {
-                    //if a.is_empty() && parsed.is_empty() && i.len() > 1 {
-                         //unsafe { print!("Bad input: `{}`", ::std::str::from_utf8_unchecked(i)); }
-                         //break;
-                    //}
                     if a.is_empty() && parsed.is_empty() && i.len() == 1 {
                          break;
                     }
