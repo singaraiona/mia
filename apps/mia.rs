@@ -7,32 +7,23 @@ use std::io::{self, Read, Write};
 use mia::parser;
 use mia::interpreter;
 
-pub fn ps1(s: &str) {
-    print!("{}", s);
-    io::stdout().flush().unwrap();
-}
+pub fn ps1() { print!(": "); io::stdout().flush().unwrap(); }
 
 fn main() {
     let mut input = vec![0u8; 256];
-    ps1(": ");
+    ps1();
     loop {
         let size = io::stdin().read(&mut input).expect("STDIN error.");
-        if size < 1 {
-            break;
-        }
         match parser::parse(&input[..size]) {
             IResult::Done(_, a) => {
-                match interpreter::fold_list(a.as_slice()) {
+               match interpreter::eval(a) {
                     Ok(e) => println!("-> {}", e),
-                    Err(e) => println!("-> {:?}", e)
+                    Err(e) => println!("-> {}", e)
                 }
             },
-            //IResult::Error(e) => {
-                //let p = error_position!(e);
-                //println!("E: {:?}", p);
-            //}
-            x => println!("{:?}", x),
+
+            _ => println!("incomplete"),
         }
-        ps1(": ");
+        ps1();
     }
 }

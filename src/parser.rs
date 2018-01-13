@@ -1,8 +1,9 @@
 use nom::*;
 use std::str;
 use std::str::FromStr;
-use ast::{Function, AST};
-use func;
+use ast::{Function, SpecialForm, AST};
+use function;
+use special;
 
 // Literals
 fn is_bin_digit(byte: u8) -> bool { byte == b'0' || byte == b'1' }
@@ -25,10 +26,10 @@ named!(long10<i64>,   map_res!(map_res!(long_literal10, str::from_utf8), |s| { i
 named!(long16<i64>,   map_res!(map_res!(long_literal16, str::from_utf8), |s| { i64::from_str_radix(s, 16) }));
 named!(long<i64>,
     alt!(
-        preceded!(tag!("#b"), long2)        |
-        preceded!(tag!("#o"), long8)        |
+        preceded!(tag!("#b"),       long2 ) |
+        preceded!(tag!("#o"),       long8 ) |
         preceded!(opt!(tag!("#d")), long10) |
-        preceded!(tag!("#x"), long16)
+        preceded!(tag!("#x"),       long16)
     )
 );
 named!(string<String>, delimited!(tag!("\""), string_content, tag!("\"")));
@@ -52,13 +53,20 @@ named!(
 );
 
 named!(
-    func<Func>,
+    func<Function>,
     alt_complete!(
-        tag!("+") => { |_| func::plus   as Function } |
-        tag!("-") => { |_| func::minus  as Function } |
-        tag!("*") => { |_| func::times  as Function } |
-        tag!("/") => { |_| func::divide as Function } |
-        tag!("'") => { |_| func::quote  as Function }
+        tag!("+") => { |_| function::plus   as Function } |
+        tag!("-") => { |_| function::minus  as Function } |
+        tag!("*") => { |_| function::times  as Function } |
+        tag!("/") => { |_| function::divide as Function }
+    )
+);
+
+named!(
+    spec<SpecialForm>,
+    alt_complete!(
+        tag!("'")     => { |_| special::quote  as SpecialForm } |
+        tag!("quote") => { |_| special::quote  as SpecialForm }
     )
 );
 
@@ -70,14 +78,15 @@ named!(
         long    => { |x| AST::Long(x)             } |
         float   => { |x| AST::Float(x)            } |
         string  => { |x| AST::String(Box::new(x)) } |
-        symbol  => { |x| AST::Symbol(Box::new(x)) } |
         func    => { |x| AST::Function(x)         } |
+        spec    => { |x| AST::SpecialForm(x)      } |
+        symbol  => { |x| AST::Symbol(Box::new(x)) } |
         list    => { |x| x }
     )
 );
 
-named!(exprs<Vec<AST>>, many0!(ws!(expr)));
-named!(list<AST>,  do_parse!(tag!("(") >> l: map!(exprs, |v| AST::List(Box::new(v))) >> tag!(")") >> (l)));
+named!(exprs<AST>, map!(many0!(ws!(expr)), |v| AST::List(Box::new(v))));
+named!(list<AST>,  do_parse!(tag!("(") >> l: exprs >> tag!(")") >> (l)));
 //
-named!(pub parse<Vec<AST>>, terminated!(exprs, eof!()));
+named!(pub parse<AST>, terminated!(exprs, eof!()));
 

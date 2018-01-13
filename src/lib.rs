@@ -6,4 +6,5 @@ extern crate nom;
 pub mod ast;
 pub mod parser;
 pub mod interpreter;
-pub mod func;
+pub mod function;
+pub mod special;
