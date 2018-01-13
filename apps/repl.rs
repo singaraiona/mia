@@ -5,41 +5,27 @@ use nom::IResult;
 use std::io::{self, Read, Write};
 use mia::parser;
 use mia::interpreter;
+use mia::mia::init_builtin_symbols;
 use std::cell::UnsafeCell;
 
-fn ps1() { print!(": "); io::stdout().flush().unwrap(); }
+fn ps1() { print!("mia> "); io::stdout().flush().unwrap(); }
 
 fn main() {
-    let input       = UnsafeCell::new(vec![0u8;4096]);
-    let mut parsed  = vec![];
-    let mut size;
+    let mut input = vec![0u8;4096];
+    init_builtin_symbols();
     ps1();
     loop {
-        size = unsafe { io::stdin().read(&mut (*input.get())).expect("STDIN error.") };
-        loop {
-            match unsafe { parser::parse(&(*input.get())[..size]) } {
-                IResult::Done(i, a) => {
-                    if a.is_empty() && parsed.is_empty() && i.len() == 1 {
-                         break;
-                    }
-                    parsed.extend(a);
-                    if i.is_empty() {
-                        match interpreter::fold_list(parsed.as_slice()) {
-                            Ok(e)  => println!("-> {}", e),
-                            Err(e) => println!("-> {}", e)
-                        }
-                        parsed.clear();
-                        break;
-                    }
-                    for (j, v) in i.iter().enumerate() { unsafe { (*input.get())[j] = *v; } }
-                    let remain = i.len();
-                    let inp = unsafe { &mut (*input.get())[remain..] };
-                    size = io::stdin().read(inp).expect("STDIN error.") + remain;
-                },
-                _ => {
-                    println!("error");
-                    break;
-                },
+        let size = io::stdin().read(&mut input).expect("STDIN error.");
+        match parser::parse(&input[..size]) {
+            IResult::Done(_, a) => {
+                match interpreter::fold_list(a.as_slice()) {
+                    Ok(e)  => println!("{}", e),
+                    Err(e) => println!("{}", e)
+                }
+            }
+            IResult::Error(e) => println!("{:?}", e),
+            _ => {
+                println!("error");
             }
         }
         ps1();

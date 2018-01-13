@@ -2,6 +2,7 @@
 
 #[macro_use]
 extern crate nom;
+extern crate fnv;
 
 #[macro_use]
 pub mod mia;

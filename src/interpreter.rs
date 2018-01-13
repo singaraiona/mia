@@ -8,17 +8,21 @@ pub fn eval_list(list: &[AST]) -> Result<AST, Error> {
 }
 
 pub fn eval(ast: AST) -> Result<AST, Error> {
-    match &ast {
-        &AST::List(ref l) if !l.is_empty() => {
+    match ast {
+        AST::List(ref l) if !l.is_empty() => {
             match l[0] {
-                AST::Symbol(s)      => { println!("{}", symbol_to_str(s));           }
-                AST::Function(f)    => { return (f)(eval_list(&l[1..])?);            }
-                AST::SpecialForm(f) => { return (f)(&l[1..]);                        }
-                _                   => { return eval_error!("car must me callable."); }
+                AST::Symbol(s)      => { match entry(s)? {
+                                             AST::Function(f)    => { (f)(eval_list(&l[1..])?)           }
+                                             AST::SpecialForm(f) => { (f)(&l[1..])                       }
+                                             _                   => { eval_err!("car must be callable.") }
+                                         }
+                                       }
+                AST::Function(f)    => { (f)(eval_list(&l[1..])?)           }
+                AST::SpecialForm(f) => { (f)(&l[1..])                       }
+                _                   => { eval_err!("car must me callable.") }
             }
         }
-        &AST::Symbol(s) => { println!("{}", symbol_to_str(s)); }
-        _ => {},
+        AST::Symbol(s) => { entry(s) }
+        a => Ok(a),
     }
-    Ok(ast)
 }

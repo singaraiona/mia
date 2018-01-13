@@ -1,5 +1,8 @@
 use std::fmt;
 use std::cell::UnsafeCell;
+use fnv::FnvHashMap;
+use function;
+use special;
 
 #[derive(Debug)]
 pub struct Error(pub String);
@@ -17,7 +20,9 @@ macro_rules! error_fmt {
 }
 
 #[macro_export]
-macro_rules! eval_error { ($($x:expr),+) => { Err($crate::mia::Error(error_fmt!($($x),+))) }}
+macro_rules! eval_error { ($($x:expr),+) => { $crate::mia::Error(error_fmt!($($x),+)) }}
+#[macro_export]
+macro_rules! eval_err   { ($($x:expr),+) => { Err(eval_error!($($x),+)) }}
 
 pub type Function    = fn(AST)    -> Result<AST, Error>;
 pub type SpecialForm = fn(&[AST]) -> Result<AST, Error>;
@@ -53,7 +58,11 @@ impl fmt::Display for AST {
     }
 }
 
-thread_local! { pub static _SYMBOLS: UnsafeCell<Vec<String>> = UnsafeCell::new(Vec::new()); }
+thread_local! {
+    pub static _SYMBOLS: UnsafeCell<Vec<String>> = UnsafeCell::new(Vec::new());
+    pub static _ENVIRONMENT: UnsafeCell<FnvHashMap<usize, AST>>
+                             = UnsafeCell::new(FnvHashMap::with_capacity_and_hasher(10000, Default::default()));
+}
 
 pub fn new_symbol(sym: String) -> usize {
     unsafe {
@@ -66,3 +75,23 @@ pub fn new_symbol(sym: String) -> usize {
     }
 }
 pub fn symbol_to_str(sym: usize) -> &'static str { unsafe { _SYMBOLS.with(|s| &(*s.get())[sym]) } }
+
+pub fn insert_entry(sym: usize, ast: AST) { unsafe { _ENVIRONMENT.with(|e| { (*e.get()).insert(sym, ast) }); } }
+
+pub fn entry(sym: usize) -> Result<AST, Error> {
+    unsafe {
+        _ENVIRONMENT.with(|e| {
+            (*e.get()).get(&sym).map(|a| a.clone()).ok_or_else(|| eval_error!("undefined symbol:", symbol_to_str(sym)))
+        })
+    }
+}
+
+fn init_builtin_symbol(sym: &str, ast: AST) {
+    let id = new_symbol(sym.to_string());
+    insert_entry(id, ast);
+}
+
+pub fn init_builtin_symbols() {
+    init_builtin_symbol("",     AST::Nil);
+    init_builtin_symbol("plus", AST::Function(function::plus));
+}
