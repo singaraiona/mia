@@ -3,7 +3,7 @@ use mia::*;
 pub fn quote(args: &[AST]) -> Result<AST, Error> {
     match args.len() {
         1 => Ok(args[0].clone()),
-        _ => Ok(AST::List(Box::new(args.to_vec())))
+        _ => Ok(LIST!(args.to_vec()))
     }
 }
 
@@ -12,5 +12,5 @@ pub fn setq(args: &[AST]) -> Result<AST, Error> {
         (&AST::Symbol(l), rhs) => insert_entry(l as usize, (*rhs).clone()),
         _ => return eval_err!("nyi"),
     }
-    Ok(AST::Nil)
+    Ok(NIL!())
 }

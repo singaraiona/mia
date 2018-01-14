@@ -1,10 +1,10 @@
 use mia::*;
 
-pub fn fold_list(list: &[AST]) -> Result<AST, Error> { list.iter().try_fold(AST::Nil, |_, x| eval(x.clone())) }
+pub fn fold_list(list: &[AST]) -> Result<AST, Error> { list.iter().try_fold(NIL!(), |_, x| eval(x.clone())) }
 
 pub fn eval_list(list: &[AST]) -> Result<AST, Error> {
     let l: Result<Vec<AST>, Error> = list.iter().cloned().map(|x| eval(x)).collect();
-    Ok(AST::List(Box::new(l?)))
+    Ok(LIST!(l?))
 }
 
 pub fn eval(ast: AST) -> Result<AST, Error> {

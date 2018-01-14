@@ -4,9 +4,9 @@ pub fn plus(args: AST) -> Result<AST, Error> {
     match args {
         AST::List(l) => l.iter()
             .cloned()
-            .fold(Ok(AST::Nil), |acc, x| match (acc, x) {
-                (Ok(AST::Nil), AST::Long(v)) => Ok(AST::Long(v)),
-                (Ok(AST::Long(u)), AST::Long(v)) => Ok(AST::Long(u + v)),
+            .fold(Ok(NIL!()), |acc, x| match (acc, x) {
+                (Ok(NIL!()), AST::Long(v)) => Ok(long!(v)),
+                (Ok(AST::Long(u)), AST::Long(v)) => Ok(long!(u + v)),
                 _ => eval_err!("plus: invalid args."),
             }),
         _ => eval_err!("plus: nyi."),

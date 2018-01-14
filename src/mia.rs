@@ -24,27 +24,35 @@ macro_rules! eval_error { ($($x:expr),+) => { $crate::mia::Error(error_fmt!($($x
 #[macro_export]
 macro_rules! eval_err   { ($($x:expr),+) => { Err(eval_error!($($x),+)) }}
 
+macro_rules! long     { ($v:expr) => { AST::Long($v)              } }
+macro_rules! float    { ($v:expr) => { AST::Float($v)             } }
+macro_rules! symbol   { ($v:expr) => { AST::Symbol($v)            } }
+macro_rules! NIL      { ()        => { AST::Symbol(0)             } }
+macro_rules! T        { ()        => { AST::Symbol(1)             } }
+macro_rules! STRING   { ($v:expr) => { AST::String(Box::new($v))  } }
+macro_rules! FUNCTION { ($v:expr) => { AST::Function($v)          } }
+macro_rules! SPECIAL  { ($v:expr) => { AST::SpecialForm($v)       } }
+macro_rules! LONG     { ($v:expr) => { AST::VecLong(Box::new($v)) } }
+macro_rules! LIST     { ($v:expr) => { AST::List(Box::new($v))    } }
+
 pub type Function    = fn(AST)    -> Result<AST, Error>;
 pub type SpecialForm = fn(&[AST]) -> Result<AST, Error>;
 
 #[derive(Clone)]
 pub enum AST {
-    Bool(bool),
     Long(i64),
     Float(f64),
-    String(Box<String>),
     Symbol(usize),
+    String(Box<String>),
     Function(Function),
     SpecialForm(SpecialForm),
     VecLong(Box<Vec<i64>>),
     List(Box<Vec<AST>>),
-    Nil,
 }
 
 impl fmt::Display for AST {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            AST::Bool(x)            => if x { write!(f, "#t") } else { write!(f, "#f") },
             AST::Long(ref x)        => write!(f, "{}", x),
             AST::Float(ref x)       => write!(f, "{}", x),
             AST::String(ref x)      => write!(f, "\"{}\"", x),
@@ -53,7 +61,6 @@ impl fmt::Display for AST {
             AST::SpecialForm(ref x) => write!(f, "{:?}", *x as i64),
             AST::List(ref x)        => write!(f, "({})", x.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().join(" ")),
             AST::VecLong(ref x)     => write!(f, "#l({})", x.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().join(" ")),
-            AST::Nil                => write!(f, "Nil"),
         }
     }
 }
@@ -92,7 +99,9 @@ fn init_builtin_symbol(sym: &str, ast: AST) {
 }
 
 pub fn init_builtin_symbols() {
-    init_builtin_symbol("",     AST::Nil);
-    init_builtin_symbol("plus", AST::Function(function::plus));
-    init_builtin_symbol("setq", AST::SpecialForm(special::setq));
+    init_builtin_symbol("NIL",  NIL!());
+    init_builtin_symbol("T",    T!());
+    init_builtin_symbol("plus", FUNCTION!(function::plus));
+    init_builtin_symbol("setq", SPECIAL!(special::setq));
 }
+

@@ -6,7 +6,6 @@ use std::io::{self, Read, Write};
 use mia::parser;
 use mia::interpreter;
 use mia::mia::init_builtin_symbols;
-use std::cell::UnsafeCell;
 
 fn ps1() { print!("mia> "); io::stdout().flush().unwrap(); }
 

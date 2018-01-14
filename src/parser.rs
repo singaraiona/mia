@@ -17,7 +17,6 @@ named!(long_literal10, recognize!(do_parse!(sign >> digit >> ())));
 named!(long_literal16, recognize!(do_parse!(sign >> hex_digit >> ())));
 
 // Base types
-named!(boolean<bool>, alt!(tag!("#t") => { |_| true } | tag!("#f") => { |_| false }));
 named!(float<f64>,    map_res!(map_res!(float_literal,  str::from_utf8), |s| { f64::from_str(s) }));
 named!(long2<i64>,    map_res!(map_res!(long_literal2,  str::from_utf8), |s| { i64::from_str_radix(s, 2) }));
 named!(long8<i64>,    map_res!(map_res!(long_literal8,  str::from_utf8), |s| { i64::from_str_radix(s, 8) }));
@@ -72,21 +71,20 @@ named!(
 named!(
     expr<AST>,
     alt_complete!(
-        quote   => { |x| x                          } |
-        boolean => { |x| AST::Bool(x)               } |
-        long    => { |x| AST::Long(x)               } |
-        float   => { |x| AST::Float(x)              } |
-        string  => { |x| AST::String(Box::new(x))   } |
-        func    => { |x| AST::Function(x)           } |
-        spec    => { |x| AST::SpecialForm(x)        } |
-        symbol  => { |x| AST::Symbol(new_symbol(x)) } |
-        list    => { |x| x                          }
+        quote   => { |x| x                      } |
+        long    => { |x| long!(x)               } |
+        float   => { |x| float!(x)              } |
+        string  => { |x| STRING!(x)             } |
+        func    => { |x| FUNCTION!(x)           } |
+        spec    => { |x| SPECIAL!(x)            } |
+        symbol  => { |x| symbol!(new_symbol(x)) } |
+        list    => { |x| x                      }
     )
 );
 
 named!(exprs<Vec<AST>>, many0!(ws!(expr)));
-named!(list<AST>,  do_parse!(tag!("(") >> l: map!(exprs, |v| AST::List(Box::new(v))) >> tag!(")") >> (l)));
-named!(quote<AST>, do_parse!(tag!("'") >> l: map!(expr,  |v| AST::List(Box::new(vec![AST::SpecialForm(special::quote), v]))) >> (l)));
+named!(list<AST>,  do_parse!(tag!("(") >> l: map!(exprs, |v| LIST!(v)) >> tag!(")") >> (l)));
+named!(quote<AST>, do_parse!(tag!("'") >> l: map!(expr,  |v| LIST!(vec![SPECIAL!(special::quote), v])) >> (l)));
 //
 named!(pub parse<Vec<AST>>, terminated!(exprs, eof!()));
 
