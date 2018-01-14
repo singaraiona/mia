@@ -94,4 +94,5 @@ fn init_builtin_symbol(sym: &str, ast: AST) {
 pub fn init_builtin_symbols() {
     init_builtin_symbol("",     AST::Nil);
     init_builtin_symbol("plus", AST::Function(function::plus));
+    init_builtin_symbol("setq", AST::SpecialForm(special::setq));
 }

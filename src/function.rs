@@ -24,3 +24,4 @@ pub fn times(args: AST) -> Result<AST, Error> {
 pub fn divide(args: AST) -> Result<AST, Error> {
     eval_err!("nyi")
 }
+
