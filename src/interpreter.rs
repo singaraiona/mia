@@ -18,10 +18,19 @@ pub fn eval(ast: AST) -> Value {
 }
 
 #[inline]
-fn call(car: AST, args: &[AST]) -> Value {
+fn call(car: AST, cdr: &[AST]) -> Value {
     match car {
-        AST::Function(f) => (f)(args.iter().cloned().map(|x| eval(x)).collect::<Vvalue>()?.as_slice()),
-        AST::Special(f)  => (f)(args),
-        _                => eval_err!("car: expected callable, found:", car)
+        AST::Function(f) => (f)(cdr.iter().cloned().map(|x| eval(x)).collect::<Vvalue>()?.as_slice()),
+        AST::Special(f)  => (f)(cdr),
+        AST::Lambda(box Lambda { ref args, ref body }) => {
+            push_frame();
+            for (s, v) in args.iter().zip(cdr.iter()) {
+                insert_entry(s.symbol(), eval(v.clone())?);
+            }
+            let r = fold_list(body.as_slice());
+            pop_frame();
+            r
+        },
+        x => eval_err!("car: expected callable, found:", x)
     }
 }

@@ -16,6 +16,10 @@ pub struct Stack(Vec<Frame>);
 impl Stack {
     pub fn new() -> Self { Stack(vec![Frame::new()]) }
 
+    pub fn push_frame(&mut self) { self.0.push(Frame::new()) }
+
+    pub fn pop_frame(&mut self) { self.0.pop(); }
+
     pub fn insert(&mut self, key: usize, val: AST) { self.last().insert(key, val); }
 
     pub fn entry(&mut self, key: usize) -> Option<AST> { self.last().entry(key).or_else(|| self.0[0].entry(key)) }

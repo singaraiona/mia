@@ -25,16 +25,17 @@ macro_rules! eval_error { ($($x:expr),+) => { $crate::mia::Error(error_fmt!($($x
 macro_rules! eval_err   { ($($x:expr),+) => { Err(eval_error!($($x),+)) }}
 
 // MIA's datatypes
-macro_rules! long     { ($v:expr) => { AST::Long($v)              } }
-macro_rules! float    { ($v:expr) => { AST::Float($v)             } }
-macro_rules! symbol   { ($v:expr) => { AST::Symbol($v)            } }
-macro_rules! NIL      { ()        => { AST::Symbol(0)             } }
-macro_rules! T        { ()        => { AST::Symbol(1)             } }
-macro_rules! STRING   { ($v:expr) => { AST::String(Box::new($v))  } }
-macro_rules! FUNCTION { ($v:expr) => { AST::Function($v)          } }
-macro_rules! SPECIAL  { ($v:expr) => { AST::Special($v)           } }
-macro_rules! LONG     { ($v:expr) => { AST::Vlong(Box::new($v))   } }
-macro_rules! LIST     { ($v:expr) => { AST::List(Box::new($v))    } }
+macro_rules! long     { ($v:expr)          => { AST::Long($v)                                       } }
+macro_rules! float    { ($v:expr)          => { AST::Float($v)                                      } }
+macro_rules! symbol   { ($v:expr)          => { AST::Symbol($v)                                     } }
+macro_rules! NIL      { ()                 => { AST::Symbol(0)                                      } }
+macro_rules! T        { ()                 => { AST::Symbol(1)                                      } }
+macro_rules! STRING   { ($v:expr)          => { AST::String(Box::new($v))                           } }
+macro_rules! FUNCTION { ($v:expr)          => { AST::Function($v)                                   } }
+macro_rules! LAMBDA   { ($a:expr, $b:expr) => { AST::Lambda(Box::new(Lambda { args:$a, body: $b })) } }
+macro_rules! SPECIAL  { ($v:expr)          => { AST::Special($v)                                    } }
+macro_rules! LONG     { ($v:expr)          => { AST::Vlong(Box::new($v))                            } }
+macro_rules! LIST     { ($v:expr)          => { AST::List(Box::new($v))                             } }
 
 pub type Value    = Result<AST, Error>;
 pub type Vvalue   = Result<Vec<AST>, Error>;
@@ -44,15 +45,39 @@ pub type Function = fn(&[AST]) -> Value;
 pub type Special  = fn(&[AST]) -> Value;
 
 #[derive(Clone)]
+pub struct Lambda {
+    pub args: Vec<AST>,
+    pub body: Vec<AST>,
+}
+
+#[derive(Clone)]
 pub enum AST {
     Long(i64),
     Float(f64),
     Symbol(usize),
     String(Box<String>),
     Function(Function),
+    Lambda(Box<Lambda>),
     Special(Special),
     Vlong(Box<Vec<i64>>),
     List(Box<Vec<AST>>),
+}
+
+macro_rules! unwrap {
+    ($ast:expr, $t:tt, $r:ty) => {
+        {
+            match *$ast {
+                AST::$t(ref x) => x,
+                _ => unreachable!(),
+            }
+        }
+    }
+}
+
+impl AST {
+    pub fn long(&self) -> i64 { *unwrap!(self, Long, i64) }
+    pub fn symbol(&self) -> usize { *unwrap!(self, Symbol, usize) }
+    pub fn list(&self) -> &Vec<AST> { unwrap!(self, List, &Box<Vec<AST>>).as_ref() }
 }
 
 macro_rules! format_list { ($l:expr) => { $l.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().join(" ") } }
@@ -60,14 +85,15 @@ macro_rules! format_list { ($l:expr) => { $l.iter().map(|v| format!("{}", v)).co
 impl fmt::Display for AST {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            AST::Long(ref x)     => write!(f, "{}", x),
-            AST::Float(ref x)    => write!(f, "{}", x),
-            AST::String(ref x)   => write!(f, "\"{}\"", x),
-            AST::Symbol(x)       => write!(f, "{}", symbol_to_str(x)),
-            AST::Function(ref x) => write!(f, "{:#p}", x),
-            AST::Special(ref x)  => write!(f, "{:?}", *x as i64),
-            AST::List(ref x)     => write!(f, "({})", format_list!(x)),
-            AST::Vlong(ref x)    => write!(f, "#l({})", format_list!(x)),
+            AST::Long(x)       => write!(f, "{}", x),
+            AST::Float(x)      => write!(f, "{}", x),
+            AST::String(ref x) => write!(f, "\"{}\"", x),
+            AST::Symbol(x)     => write!(f, "{}", symbol_to_str(x)),
+            AST::Function(x)   => write!(f, "{:#x}", x as usize),
+            AST::Lambda(ref x) => write!(f, "(({}) {})", format_list!(x.args), format_list!(x.body)),
+            AST::Special(x)    => write!(f, "{:#x}", x as usize),
+            AST::List(ref x)   => write!(f, "({})", format_list!(x)),
+            AST::Vlong(ref x)  => write!(f, "#l({})", format_list!(x)),
         }
     }
 }
@@ -103,6 +129,10 @@ fn init_builtin_symbol(sym: &str, ast: AST) {
     let id = new_symbol(sym.to_string());
     insert_entry(id, ast);
 }
+
+pub fn push_frame() { unsafe { _STACK.with(|s| (*s.get()).push_frame()) } }
+
+pub fn pop_frame() { unsafe { _STACK.with(|s| (*s.get()).pop_frame()) } }
 
 pub fn init_builtin_symbols() {
     init_builtin_symbol("NIL",  NIL!());

@@ -64,7 +64,8 @@ named!(
     special<Special>,
     alt_complete!(
         tag!("quote") => { |_| special::quote  as Special } |
-        tag!("setq")  => { |_| special::setq   as Special }
+        tag!("setq")  => { |_| special::setq   as Special } |
+        tag!("de")    => { |_| special::de     as Special }
     )
 );
 
