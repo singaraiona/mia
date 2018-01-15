@@ -1,28 +1,27 @@
 use mia::*;
 
-pub fn fold_list(list: &[AST]) -> Result<AST, Error> { list.iter().try_fold(NIL!(), |_, x| eval(x.clone())) }
+pub fn fold_list(list: &[AST]) -> Value { list.iter().try_fold(NIL!(), |_, x| eval(x.clone())) }
 
-pub fn eval_list(list: &[AST]) -> Result<AST, Error> {
-    let l: Result<Vec<AST>, Error> = list.iter().cloned().map(|x| eval(x)).collect();
-    Ok(LIST!(l?))
-}
+pub fn eval_list(list: &[AST]) -> Value { Ok(LIST!(list.iter().cloned().map(|x| eval(x)).collect::<Vvalue>()?)) }
 
-pub fn eval(ast: AST) -> Result<AST, Error> {
+pub fn eval(ast: AST) -> Value {
     match ast {
         AST::List(ref l) if !l.is_empty() => {
             match l[0] {
-                AST::Symbol(s)      => { match entry(s)? {
-                                             AST::Function(f)    => { (f)(eval_list(&l[1..])?)           }
-                                             AST::SpecialForm(f) => { (f)(&l[1..])                       }
-                                             _                   => { eval_err!("car must be callable.") }
-                                         }
-                                       }
-                AST::Function(f)    => { (f)(eval_list(&l[1..])?)           }
-                AST::SpecialForm(f) => { (f)(&l[1..])                       }
-                _                   => { eval_err!("car must me callable.") }
+                AST::Symbol(s) => call(entry(s)?, &l[1..]),
+                ref f          => call(f.clone(), &l[1..]),
             }
         }
-        AST::Symbol(s) => { entry(s) }
+        AST::Symbol(s) => entry(s),
         a => Ok(a),
+    }
+}
+
+#[inline]
+fn call(car: AST, args: &[AST]) -> Value {
+    match car {
+        AST::Function(f) => (f)(args.iter().cloned().map(|x| eval(x)).collect::<Vvalue>()?.as_slice()),
+        AST::Special(f)  => (f)(args),
+        _                => eval_err!("car: expected callable, found:", car)
     }
 }

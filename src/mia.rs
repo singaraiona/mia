@@ -24,6 +24,7 @@ macro_rules! eval_error { ($($x:expr),+) => { $crate::mia::Error(error_fmt!($($x
 #[macro_export]
 macro_rules! eval_err   { ($($x:expr),+) => { Err(eval_error!($($x),+)) }}
 
+// MIA's datatypes
 macro_rules! long     { ($v:expr) => { AST::Long($v)              } }
 macro_rules! float    { ($v:expr) => { AST::Float($v)             } }
 macro_rules! symbol   { ($v:expr) => { AST::Symbol($v)            } }
@@ -31,12 +32,16 @@ macro_rules! NIL      { ()        => { AST::Symbol(0)             } }
 macro_rules! T        { ()        => { AST::Symbol(1)             } }
 macro_rules! STRING   { ($v:expr) => { AST::String(Box::new($v))  } }
 macro_rules! FUNCTION { ($v:expr) => { AST::Function($v)          } }
-macro_rules! SPECIAL  { ($v:expr) => { AST::SpecialForm($v)       } }
-macro_rules! LONG     { ($v:expr) => { AST::VecLong(Box::new($v)) } }
+macro_rules! SPECIAL  { ($v:expr) => { AST::Special($v)           } }
+macro_rules! LONG     { ($v:expr) => { AST::Vlong(Box::new($v))   } }
 macro_rules! LIST     { ($v:expr) => { AST::List(Box::new($v))    } }
 
-pub type Function    = fn(AST)    -> Result<AST, Error>;
-pub type SpecialForm = fn(&[AST]) -> Result<AST, Error>;
+pub type Value    = Result<AST, Error>;
+pub type Vvalue   = Result<Vec<AST>, Error>;
+// Evaluates all arguments before call
+pub type Function = fn(&[AST]) -> Value;
+// It's up to calee to decide if arguments need evaluation
+pub type Special  = fn(&[AST]) -> Value;
 
 #[derive(Clone)]
 pub enum AST {
@@ -45,22 +50,24 @@ pub enum AST {
     Symbol(usize),
     String(Box<String>),
     Function(Function),
-    SpecialForm(SpecialForm),
-    VecLong(Box<Vec<i64>>),
+    Special(Special),
+    Vlong(Box<Vec<i64>>),
     List(Box<Vec<AST>>),
 }
+
+macro_rules! format_list { ($l:expr) => { $l.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().join(" ") } }
 
 impl fmt::Display for AST {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            AST::Long(ref x)        => write!(f, "{}", x),
-            AST::Float(ref x)       => write!(f, "{}", x),
-            AST::String(ref x)      => write!(f, "\"{}\"", x),
-            AST::Symbol(x)          => write!(f, "{}", symbol_to_str(x)),
-            AST::Function(ref x)    => write!(f, "{:?}", x),
-            AST::SpecialForm(ref x) => write!(f, "{:?}", *x as i64),
-            AST::List(ref x)        => write!(f, "({})", x.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().join(" ")),
-            AST::VecLong(ref x)     => write!(f, "#l({})", x.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().join(" ")),
+            AST::Long(ref x)     => write!(f, "{}", x),
+            AST::Float(ref x)    => write!(f, "{}", x),
+            AST::String(ref x)   => write!(f, "\"{}\"", x),
+            AST::Symbol(x)       => write!(f, "{}", symbol_to_str(x)),
+            AST::Function(ref x) => write!(f, "{:#p}", x),
+            AST::Special(ref x)  => write!(f, "{:?}", *x as i64),
+            AST::List(ref x)     => write!(f, "({})", format_list!(x)),
+            AST::Vlong(ref x)    => write!(f, "#l({})", format_list!(x)),
         }
     }
 }
@@ -85,7 +92,7 @@ pub fn symbol_to_str(sym: usize) -> &'static str { unsafe { _SYMBOLS.with(|s| &(
 
 pub fn insert_entry(sym: usize, ast: AST) { unsafe { _ENVIRONMENT.with(|e| { (*e.get()).insert(sym, ast) }); } }
 
-pub fn entry(sym: usize) -> Result<AST, Error> {
+pub fn entry(sym: usize) -> Value {
     unsafe {
         _ENVIRONMENT.with(|e| {
             (*e.get()).get(&sym).map(|a| a.clone()).ok_or_else(|| eval_error!("undefined symbol:", symbol_to_str(sym)))

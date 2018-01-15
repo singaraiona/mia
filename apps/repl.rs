@@ -5,11 +5,12 @@ use nom::IResult;
 use std::io::{self, Read, Write};
 use mia::parser;
 use mia::interpreter;
-use mia::mia::init_builtin_symbols;
+use mia::mia::{AST, init_builtin_symbols};
 
-fn ps1() { print!("mia> "); io::stdout().flush().unwrap(); }
+fn ps1() { print!(": "); io::stdout().flush().unwrap(); }
 
 fn main() {
+    debug_assert!(::std::mem::size_of::<AST>() == 16, "sizeof AST is not 16.");
     let mut input = vec![0u8;4096];
     init_builtin_symbols();
     ps1();

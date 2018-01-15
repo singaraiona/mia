@@ -1,7 +1,7 @@
 use nom::*;
 use std::str;
 use std::str::FromStr;
-use mia::{Function, SpecialForm, AST, new_symbol};
+use mia::{Function, Special, AST, new_symbol};
 use function;
 use special;
 
@@ -51,7 +51,7 @@ named!(
 );
 
 named!(
-    func<Function>,
+    function<Function>,
     alt_complete!(
         tag!("+") => { |_| function::plus   as Function } |
         tag!("-") => { |_| function::minus  as Function } |
@@ -61,9 +61,9 @@ named!(
 );
 
 named!(
-    spec<SpecialForm>,
+    special<Special>,
     alt_complete!(
-        tag!("quote") => { |_| special::quote  as SpecialForm }
+        tag!("quote") => { |_| special::quote  as Special }
     )
 );
 
@@ -71,14 +71,14 @@ named!(
 named!(
     expr<AST>,
     alt_complete!(
-        quote   => { |x| x                      } |
-        long    => { |x| long!(x)               } |
-        float   => { |x| float!(x)              } |
-        string  => { |x| STRING!(x)             } |
-        func    => { |x| FUNCTION!(x)           } |
-        spec    => { |x| SPECIAL!(x)            } |
-        symbol  => { |x| symbol!(new_symbol(x)) } |
-        list    => { |x| x                      }
+        quote    => { |x| x                      } |
+        long     => { |x| long!(x)               } |
+        float    => { |x| float!(x)              } |
+        string   => { |x| STRING!(x)             } |
+        function => { |x| FUNCTION!(x)           } |
+        special  => { |x| SPECIAL!(x)            } |
+        symbol   => { |x| symbol!(new_symbol(x)) } |
+        list     => { |x| x                      }
     )
 );
 
