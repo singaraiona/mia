@@ -31,7 +31,7 @@ named!(long<i64>,
     )
 );
 named!(string<String>, delimited!(tag!("\""), string_content, tag!("\"")));
-named!(symbol<String>, map!(map_res!(alphanumeric, str::from_utf8), |s| s.to_string()));
+named!(symbol<usize>, map!(map_res!(alphanumeric, str::from_utf8), |s| new_symbol(s.to_string())));
 named!(
     string_content<String>,
     map!(
@@ -63,7 +63,8 @@ named!(
 named!(
     special<Special>,
     alt_complete!(
-        tag!("quote") => { |_| special::quote  as Special }
+        tag!("quote") => { |_| special::quote  as Special } |
+        tag!("setq")  => { |_| special::setq   as Special }
     )
 );
 
@@ -71,14 +72,14 @@ named!(
 named!(
     expr<AST>,
     alt_complete!(
-        quote    => { |x| x                      } |
-        long     => { |x| long!(x)               } |
-        float    => { |x| float!(x)              } |
-        string   => { |x| STRING!(x)             } |
-        function => { |x| FUNCTION!(x)           } |
-        special  => { |x| SPECIAL!(x)            } |
-        symbol   => { |x| symbol!(new_symbol(x)) } |
-        list     => { |x| x                      }
+        quote    => { |x| x            } |
+        long     => { |x| long!(x)     } |
+        float    => { |x| float!(x)    } |
+        string   => { |x| STRING!(x)   } |
+        function => { |x| FUNCTION!(x) } |
+        special  => { |x| SPECIAL!(x)  } |
+        symbol   => { |x| symbol!(x)   } |
+        list     => { |x| x            }
     )
 );
 

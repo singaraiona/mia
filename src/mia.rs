@@ -1,8 +1,8 @@
 use std::fmt;
 use std::cell::UnsafeCell;
-use fnv::FnvHashMap;
 use function;
 use special;
+use stack::Stack;
 
 #[derive(Debug)]
 pub struct Error(pub String);
@@ -74,8 +74,7 @@ impl fmt::Display for AST {
 
 thread_local! {
     pub static _SYMBOLS: UnsafeCell<Vec<String>> = UnsafeCell::new(Vec::new());
-    pub static _ENVIRONMENT: UnsafeCell<FnvHashMap<usize, AST>>
-                             = UnsafeCell::new(FnvHashMap::with_capacity_and_hasher(10000, Default::default()));
+    pub static _STACK:   UnsafeCell<Stack>       = UnsafeCell::new(Stack::new());
 }
 
 pub fn new_symbol(sym: String) -> usize {
@@ -90,12 +89,12 @@ pub fn new_symbol(sym: String) -> usize {
 }
 pub fn symbol_to_str(sym: usize) -> &'static str { unsafe { _SYMBOLS.with(|s| &(*s.get())[sym]) } }
 
-pub fn insert_entry(sym: usize, ast: AST) { unsafe { _ENVIRONMENT.with(|e| { (*e.get()).insert(sym, ast) }); } }
+pub fn insert_entry(sym: usize, ast: AST) { unsafe { _STACK.with(|s| { (*s.get()).insert(sym, ast) }); } }
 
 pub fn entry(sym: usize) -> Value {
     unsafe {
-        _ENVIRONMENT.with(|e| {
-            (*e.get()).get(&sym).map(|a| a.clone()).ok_or_else(|| eval_error!("undefined symbol:", symbol_to_str(sym)))
+        _STACK.with(|s| {
+            (*s.get()).entry(sym).ok_or_else(|| eval_error!("undefined symbol:", symbol_to_str(sym)))
         })
     }
 }
@@ -109,6 +108,5 @@ pub fn init_builtin_symbols() {
     init_builtin_symbol("NIL",  NIL!());
     init_builtin_symbol("T",    T!());
     init_builtin_symbol("plus", FUNCTION!(function::plus));
-    init_builtin_symbol("setq", SPECIAL!(special::setq));
 }
 

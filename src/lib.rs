@@ -8,5 +8,6 @@ extern crate fnv;
 pub mod mia;
 pub mod parser;
 pub mod interpreter;
+pub mod stack;
 pub mod function;
 pub mod special;
