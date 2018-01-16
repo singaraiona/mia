@@ -10,7 +10,7 @@ use mia::mia::{AST, init_builtin_symbols};
 fn ps1() { print!(": "); io::stdout().flush().unwrap(); }
 
 fn main() {
-    debug_assert!(::std::mem::size_of::<AST>() == 16, "sizeof AST is not 16.");
+    debug_assert!(::std::mem::size_of::<AST>() == 16, "Sizeof AST is not 16.");
     let mut input = vec![0u8;4096];
     init_builtin_symbols();
     ps1();
@@ -25,7 +25,7 @@ fn main() {
             }
             IResult::Error(e) => println!("{:?}", e),
             _ => {
-                println!("error");
+                println!("Error");
             }
         }
         ps1();

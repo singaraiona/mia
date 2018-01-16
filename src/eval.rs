@@ -31,6 +31,6 @@ fn call(car: AST, cdr: &[AST]) -> Value {
             pop_frame();
             r
         },
-        x => eval_err!("car: expected callable, found:", x)
+        x => eval_err!("CAR: expected callable, found:", x)
     }
 }

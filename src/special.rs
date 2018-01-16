@@ -11,7 +11,7 @@ pub fn quote(args: &[AST]) -> Value {
 pub fn setq(args: &[AST]) -> Value {
     match (&args[0], &args[1]) {
         (&AST::Symbol(l), rhs) => insert_entry(l as usize, eval(rhs.clone())?),
-        _ => return eval_err!("nyi"),
+        _ => return eval_err!("Nyi"),
     }
     Ok(args[1].clone())
 }

@@ -57,16 +57,21 @@ named!(
     )
 );
 
+named!(vlong<Vec<i64>>,  delimited!(tag!("#l["),  many0!(ws!(long)),  tag!("]")));
+named!(vfloat<Vec<f64>>, delimited!(tag!("#f["),  many0!(ws!(alt!(float | map!(long, |l| l as f64)))), tag!("]")));
+
 // AST
 named!(
     expr<AST>,
     alt_complete!(
         quote    => { |x| quoted(x)       } |
-        long     => { |x| long!(x)        } |
         float    => { |x| float!(x)       } |
+        long     => { |x| long!(x)        } |
         string   => { |x| STRING!(x)      } |
         symbol   => { |x| build_symbol(x) } |
         verb     => { |x| build_symbol(x) } |
+        vlong    => { |x| LONG!(x)        } |
+        vfloat   => { |x| FLOAT!(x)       } |
         list     => { |x| LIST!(x)        }
     )
 );

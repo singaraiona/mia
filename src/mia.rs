@@ -9,7 +9,7 @@ pub struct Error(pub String);
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "** error `{}`", self.0)
+        write!(f, "** Error: `{}`", self.0)
     }
 }
 
@@ -35,6 +35,7 @@ macro_rules! FUNCTION { ($v:expr)          => { AST::Function($v)               
 macro_rules! LAMBDA   { ($a:expr, $b:expr) => { AST::Lambda(Box::new(Lambda { args:$a, body: $b })) } }
 macro_rules! SPECIAL  { ($v:expr)          => { AST::Special($v)                                    } }
 macro_rules! LONG     { ($v:expr)          => { AST::Vlong(Box::new($v))                            } }
+macro_rules! FLOAT    { ($v:expr)          => { AST::Vfloat(Box::new($v))                           } }
 macro_rules! LIST     { ($v:expr)          => { AST::List(Box::new($v))                             } }
 
 pub type Value    = Result<AST, Error>;
@@ -77,6 +78,7 @@ pub enum AST {
     Lambda(Box<Lambda>),
     Special(Special),
     Vlong(Box<Vec<i64>>),
+    Vfloat(Box<Vec<f64>>),
     List(Box<Vec<AST>>),
 }
 
@@ -103,7 +105,7 @@ macro_rules! format_builtin {
     ($p:expr,$s:expr) => {
         $p.iter().map(|x| (x.0, x.1 as i64))
         .find(|&x| x.1 == $s as i64).map(|x| x.0.to_string())
-        .unwrap_or(format!("builtin: {} can't be formatted.", $s as i64))
+        .unwrap_or(format!("Builtin: {} can't be formatted.", $s as i64))
     }
 }
 
@@ -118,7 +120,8 @@ impl fmt::Display for AST {
             AST::Lambda(ref x) => write!(f, "(({}) {})", format_list!(x.args), format_list!(x.body)),
             AST::Special(x)    => write!(f, "{}", format_builtin!(_SPECIALS, x)),
             AST::List(ref x)   => write!(f, "({})", format_list!(x)),
-            AST::Vlong(ref x)  => write!(f, "#l({})", format_list!(x)),
+            AST::Vlong(ref x)  => write!(f, "#l[{}]", format_list!(x)),
+            AST::Vfloat(ref x) => write!(f, "#f[{}]", format_list!(x)),
         }
     }
 }
@@ -146,7 +149,7 @@ pub fn insert_entry(sym: usize, ast: AST) { unsafe { _STACK.with(|s| { (*s.get()
 pub fn entry(sym: usize) -> Value {
     unsafe {
         _STACK.with(|s| {
-            (*s.get()).entry(sym).ok_or_else(|| eval_error!("undefined symbol:", symbol_to_str(sym)))
+            (*s.get()).entry(sym).ok_or_else(|| eval_error!("Undefined symbol:", symbol_to_str(sym)))
         })
     }
 }
