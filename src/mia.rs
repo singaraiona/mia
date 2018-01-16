@@ -46,9 +46,11 @@ pub type Special  = fn(&[AST]) -> Value;
 
 lazy_static! {
     static ref _FUNCTIONS: [(&'static str, Function);2] =
-        [("+", function::plus), ("-", function::minus)];
-    static ref _SPECIALS: [(&'static str, Special);2] =
-        [("setq", special::setq), ("de", special::de)];
+        [("+",   function::plus), ("-",    function::minus)];
+
+    static ref _SPECIALS: [(&'static str, Special);4] =
+        [("setq", special::setq), ("de",       special::de),
+         ("'",   special::quote), ("quote", special::quote)];
 }
 
 pub fn build_symbol(sym: &str) -> AST {
@@ -56,6 +58,8 @@ pub fn build_symbol(sym: &str) -> AST {
     for s in _SPECIALS.iter()  { if s.0 == sym { return AST::Special(s.1) } }
     symbol!(new_symbol(sym.to_string()))
 }
+
+pub fn quoted(a: AST) -> AST { LIST!(vec![SPECIAL!(special::quote), a]) }
 
 #[derive(Clone)]
 pub struct Lambda {

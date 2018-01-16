@@ -1,7 +1,7 @@
 use nom::*;
 use std::str;
 use std::str::FromStr;
-use mia::{Function, Special, AST, build_symbol};
+use mia::{Function, Special, AST, build_symbol, quoted};
 use function;
 use special;
 
@@ -32,7 +32,13 @@ named!(long<i64>,
 );
 named!(string<String>, delimited!(tag!("\""), string_content, tag!("\"")));
 named!(symbol<&str>,   map_res!(alphanumeric, str::from_utf8));
-named!(verb<&str>,     map_res!(alt!(tag!("+") | tag!("-") | tag!("*") | tag!("/")), str::from_utf8));
+named!(verb<&str>,     map_res!(
+    alt!(
+        tag!("+") |
+        tag!("-") |
+        tag!("*") |
+        tag!("/") |
+        tag!("'")), str::from_utf8));
 named!(
     string_content<String>,
     map!(
@@ -55,19 +61,19 @@ named!(
 named!(
     expr<AST>,
     alt_complete!(
-        quote    => { |x| x               } |
+        quote    => { |x| quoted(x)       } |
         long     => { |x| long!(x)        } |
         float    => { |x| float!(x)       } |
         string   => { |x| STRING!(x)      } |
         symbol   => { |x| build_symbol(x) } |
         verb     => { |x| build_symbol(x) } |
-        list     => { |x| x               }
+        list     => { |x| LIST!(x)        }
     )
 );
 
 named!(exprs<Vec<AST>>, many0!(ws!(expr)));
-named!(list<AST>,  do_parse!(tag!("(") >> l: map!(exprs, |v| LIST!(v)) >> tag!(")") >> (l)));
-named!(quote<AST>, do_parse!(tag!("'") >> l: map!(expr,  |v| LIST!(vec![SPECIAL!(special::quote), v])) >> (l)));
+named!(list<Vec<AST>>,  do_parse!(tag!("(") >> l: exprs >> tag!(")") >> (l)));
+named!(quote<AST>,      do_parse!(tag!("'") >> l: expr >> (l)));
 //
 named!(pub parse<Vec<AST>>, terminated!(exprs, eof!()));
 
