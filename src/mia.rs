@@ -4,6 +4,8 @@ use function;
 use special;
 use stack::Stack;
 
+pub const FMT_ITEMS_LIMIT: usize = 30;
+
 #[derive(Debug)]
 pub struct Error(pub String);
 
@@ -46,8 +48,9 @@ pub type Function = fn(&[AST]) -> Value;
 pub type Special  = fn(&[AST]) -> Value;
 
 lazy_static! {
-    static ref _FUNCTIONS: [(&'static str, Function);2] =
-        [("+",   function::plus), ("-",    function::minus)];
+    static ref _FUNCTIONS: [(&'static str, Function);3] =
+        [("+",   function::plus), ("-",    function::minus),
+         ("til",  function::til)];
 
     static ref _SPECIALS: [(&'static str, Special);4] =
         [("setq", special::setq), ("de",       special::de),
@@ -99,7 +102,13 @@ impl AST {
     pub fn list(&self) -> &Vec<AST> { unwrap!(self, List, &Box<Vec<AST>>).as_ref() }
 }
 
-macro_rules! format_list { ($l:expr) => { $l.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().join(" ") } }
+macro_rules! format_list { ($l:expr) => {
+    {
+        let _suf = if $l.len() < FMT_ITEMS_LIMIT { "" } else { "..." };
+        format!("{}{}", $l.iter().take(FMT_ITEMS_LIMIT).map(|v| format!("{}", v))
+                        .collect::<Vec<_>>().join(" "), _suf)
+    }
+}}
 
 macro_rules! format_builtin {
     ($p:expr,$s:expr) => {

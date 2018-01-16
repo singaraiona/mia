@@ -21,3 +21,8 @@ pub fn divide(args: &[AST]) -> Value {
     eval_err!("nyi")
 }
 
+pub fn til(args: &[AST]) -> Value {
+    let len = args[0].long();
+    let vec = (0..len).map(|x| x as i64).collect::<Vec<i64>>();
+    Ok(LONG!(vec))
+}
