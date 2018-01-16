@@ -44,6 +44,19 @@ pub type Function = fn(&[AST]) -> Value;
 // It's up to calee to decide if arguments need evaluation
 pub type Special  = fn(&[AST]) -> Value;
 
+lazy_static! {
+    static ref _FUNCTIONS: [(&'static str, Function);2] =
+        [("+", function::plus), ("-", function::minus)];
+    static ref _SPECIALS: [(&'static str, Special);2] =
+        [("setq", special::setq), ("de", special::de)];
+}
+
+pub fn build_symbol(sym: &str) -> AST {
+    for f in _FUNCTIONS.iter() { if f.0 == sym { return AST::Function(f.1) } }
+    for s in _SPECIALS.iter()  { if s.0 == sym { return AST::Special(s.1) } }
+    symbol!(new_symbol(sym.to_string()))
+}
+
 #[derive(Clone)]
 pub struct Lambda {
     pub args: Vec<AST>,
@@ -82,6 +95,14 @@ impl AST {
 
 macro_rules! format_list { ($l:expr) => { $l.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().join(" ") } }
 
+macro_rules! format_builtin {
+    ($p:expr,$s:expr) => {
+        $p.iter().map(|x| (x.0, x.1 as i64))
+        .find(|&x| x.1 == $s as i64).map(|x| x.0.to_string())
+        .unwrap_or(format!("builtin: {} can't be formatted.", $s as i64))
+    }
+}
+
 impl fmt::Display for AST {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -89,9 +110,9 @@ impl fmt::Display for AST {
             AST::Float(x)      => write!(f, "{}", x),
             AST::String(ref x) => write!(f, "\"{}\"", x),
             AST::Symbol(x)     => write!(f, "{}", symbol_to_str(x)),
-            AST::Function(x)   => write!(f, "{:#x}", x as usize),
+            AST::Function(x)   => write!(f, "{}", format_builtin!(_FUNCTIONS, x)),
             AST::Lambda(ref x) => write!(f, "(({}) {})", format_list!(x.args), format_list!(x.body)),
-            AST::Special(x)    => write!(f, "{:#x}", x as usize),
+            AST::Special(x)    => write!(f, "{}", format_builtin!(_SPECIALS, x)),
             AST::List(ref x)   => write!(f, "({})", format_list!(x)),
             AST::Vlong(ref x)  => write!(f, "#l({})", format_list!(x)),
         }
@@ -113,6 +134,7 @@ pub fn new_symbol(sym: String) -> usize {
         })
     }
 }
+
 pub fn symbol_to_str(sym: usize) -> &'static str { unsafe { _SYMBOLS.with(|s| &(*s.get())[sym]) } }
 
 pub fn insert_entry(sym: usize, ast: AST) { unsafe { _STACK.with(|s| { (*s.get()).insert(sym, ast) }); } }
@@ -137,6 +159,5 @@ pub fn pop_frame() { unsafe { _STACK.with(|s| (*s.get()).pop_frame()) } }
 pub fn init_builtin_symbols() {
     init_builtin_symbol("NIL",  NIL!());
     init_builtin_symbol("T",    T!());
-    init_builtin_symbol("plus", FUNCTION!(function::plus));
 }
 

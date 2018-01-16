@@ -1,7 +1,7 @@
 use nom::*;
 use std::str;
 use std::str::FromStr;
-use mia::{Function, Special, AST, new_symbol};
+use mia::{Function, Special, AST, build_symbol};
 use function;
 use special;
 
@@ -31,7 +31,8 @@ named!(long<i64>,
     )
 );
 named!(string<String>, delimited!(tag!("\""), string_content, tag!("\"")));
-named!(symbol<usize>, map!(map_res!(alphanumeric, str::from_utf8), |s| new_symbol(s.to_string())));
+named!(symbol<&str>,   map_res!(alphanumeric, str::from_utf8));
+named!(verb<&str>,     map_res!(alt!(tag!("+") | tag!("-") | tag!("*") | tag!("/")), str::from_utf8));
 named!(
     string_content<String>,
     map!(
@@ -50,37 +51,17 @@ named!(
     )
 );
 
-named!(
-    function<Function>,
-    alt_complete!(
-        tag!("+") => { |_| function::plus   as Function } |
-        tag!("-") => { |_| function::minus  as Function } |
-        tag!("*") => { |_| function::times  as Function } |
-        tag!("/") => { |_| function::divide as Function }
-    )
-);
-
-named!(
-    special<Special>,
-    alt_complete!(
-        tag!("quote") => { |_| special::quote  as Special } |
-        tag!("setq")  => { |_| special::setq   as Special } |
-        tag!("de")    => { |_| special::de     as Special }
-    )
-);
-
 // AST
 named!(
     expr<AST>,
     alt_complete!(
-        quote    => { |x| x            } |
-        long     => { |x| long!(x)     } |
-        float    => { |x| float!(x)    } |
-        string   => { |x| STRING!(x)   } |
-        function => { |x| FUNCTION!(x) } |
-        special  => { |x| SPECIAL!(x)  } |
-        symbol   => { |x| symbol!(x)   } |
-        list     => { |x| x            }
+        quote    => { |x| x               } |
+        long     => { |x| long!(x)        } |
+        float    => { |x| float!(x)       } |
+        string   => { |x| STRING!(x)      } |
+        symbol   => { |x| build_symbol(x) } |
+        verb     => { |x| build_symbol(x) } |
+        list     => { |x| x               }
     )
 );
 

@@ -4,7 +4,7 @@ extern crate nom;
 use nom::IResult;
 use std::io::{self, Read, Write};
 use mia::parser;
-use mia::interpreter;
+use mia::eval;
 use mia::mia::{AST, init_builtin_symbols};
 
 fn ps1() { print!(": "); io::stdout().flush().unwrap(); }
@@ -18,7 +18,7 @@ fn main() {
         let size = io::stdin().read(&mut input).expect("STDIN error.");
         match parser::parse(&input[..size]) {
             IResult::Done(_, a) => {
-                match interpreter::fold_list(a.as_slice()) {
+                match eval::fold_list(a.as_slice()) {
                     Ok(e)  => println!("{}", e),
                     Err(e) => println!("{}", e)
                 }

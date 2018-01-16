@@ -4,11 +4,13 @@
 #[macro_use]
 extern crate nom;
 extern crate fnv;
+#[macro_use]
+extern crate lazy_static;
 
 #[macro_use]
 pub mod mia;
 pub mod parser;
-pub mod interpreter;
+pub mod eval;
 pub mod stack;
 pub mod function;
 pub mod special;

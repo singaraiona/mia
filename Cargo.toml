@@ -6,6 +6,7 @@ authors = ["Anton <singaraiona@gmail.com>"]
 [dependencies]
 nom = "^3.2"
 fnv = "*"
+lazy_static = "*"
 
 [[bin]]
 name = "repl"

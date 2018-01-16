@@ -5,7 +5,7 @@ pub fn plus(args: &[AST]) -> Value {
         match (acc, x) {
                 (Ok(NIL!()),       AST::Long(v)) => Ok(long!(v)),
                 (Ok(AST::Long(u)), AST::Long(v)) => Ok(long!(u + v)),
-                _                                => eval_err!("plus: invalid args."),
+                _                                => eval_err!("plus: invalid args [", format_list!(args), "]"),
         })
 }
 
