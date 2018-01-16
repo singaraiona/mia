@@ -22,7 +22,9 @@ impl Stack {
 
     pub fn insert(&mut self, key: usize, val: AST) { self.last().insert(key, val); }
 
-    pub fn entry(&mut self, key: usize) -> Option<AST> { self.last().entry(key).or_else(|| self.0[0].entry(key)) }
+    pub fn entry(&mut self, key: usize) -> Option<AST> {
+        self.0.iter().rev().find(|e| { e.entry(key) })
+    }
 
     // Assume we always have at least one frame.
     fn last(&mut self) -> &mut Frame { let l = self.0.len() - 1; &mut self.0[l] }
