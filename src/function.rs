@@ -5,20 +5,20 @@ pub fn plus(args: &[AST]) -> Value {
         match (acc, x) {
                 (Ok(NIL!()),       AST::Long(v)) => Ok(long!(v)),
                 (Ok(AST::Long(u)), AST::Long(v)) => Ok(long!(u + v)),
-                _                                => eval_err!("Plus: invalid args [", format_list!(args), "]"),
+                _                                => args_err!(args),
         })
 }
 
 pub fn minus(args: &[AST]) -> Value {
-    eval_err!("nyi")
+    nyi_err!()
 }
 
 pub fn times(args: &[AST]) -> Value {
-    eval_err!("nyi")
+    nyi_err!()
 }
 
 pub fn divide(args: &[AST]) -> Value {
-    eval_err!("nyi")
+    nyi_err!()
 }
 
 pub fn til(args: &[AST]) -> Value {
@@ -26,3 +26,4 @@ pub fn til(args: &[AST]) -> Value {
     let vec = (0..len).map(|x| x as i64).collect::<Vec<i64>>();
     Ok(LONG!(vec))
 }
+

@@ -1,5 +1,6 @@
 #![feature(iterator_try_fold)]
 #![feature(box_patterns)]
+#![feature(core_intrinsics)]
 
 #[macro_use]
 extern crate nom;

@@ -57,8 +57,8 @@ named!(
     )
 );
 
-named!(vlong<Vec<i64>>,  delimited!(tag!("#l["),  many0!(ws!(long)),  tag!("]")));
-named!(vfloat<Vec<f64>>, delimited!(tag!("#f["),  many0!(ws!(alt!(float | map!(long, |l| l as f64)))), tag!("]")));
+named!(vlong<Vec<i64>>,  delimited!(tag!("#l("),  many0!(ws!(long)),  tag!(")")));
+named!(vfloat<Vec<f64>>, delimited!(tag!("#f("),  many0!(ws!(alt!(float | map!(long, |l| l as f64)))), tag!(")")));
 
 // AST
 named!(

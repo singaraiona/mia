@@ -15,16 +15,31 @@ impl fmt::Display for Error {
     }
 }
 
-#[macro_export]
+// Since there is no (yet?) gcc's like __function__ macro
+macro_rules! func {
+    () => {{
+        fn f() {}
+        fn type_name_of<T>(_: T) -> &'static str {
+            extern crate core;
+            unsafe { core::intrinsics::type_name::<T>() }
+        }
+        let name = type_name_of(f);
+        format!("{}:", &name[6..name.len() - 4])
+    }}
+}
+
 macro_rules! error_fmt {
     ($x:expr)                => { format!("{}", $x)                         };
     ($x:expr, $($y:expr),+)  => { format!("{} {}", $x, error_fmt!($($y),+)) }
 }
 
-#[macro_export]
 macro_rules! eval_error { ($($x:expr),+) => { $crate::mia::Error(error_fmt!($($x),+)) }}
-#[macro_export]
-macro_rules! eval_err   { ($($x:expr),+) => { Err(eval_error!($($x),+)) }}
+macro_rules! eval_err   { ($($x:expr),+) => { Err(eval_error!($($x),+))               }}
+
+// Common errors
+macro_rules! nyi_err   { ()             => { eval_err!(func!(), "nyi.")                            } }
+macro_rules! args_err  { ($a:expr)      => { eval_err!(func!(), "invalid args:", format_list!($a)) } }
+macro_rules! bound_err { ($($a:expr),+) => { eval_err!(func!(), "index out of bounds:", $($a),+)   } }
 
 // MIA's datatypes
 macro_rules! long     { ($v:expr)          => { AST::Long($v)                                       } }
@@ -52,9 +67,10 @@ lazy_static! {
         [("+",   function::plus), ("-",    function::minus),
          ("til",  function::til)];
 
-    static ref _SPECIALS: [(&'static str, Special);4] =
+    static ref _SPECIALS: [(&'static str, Special);6] =
         [("setq", special::setq), ("de",       special::de),
-         ("'",   special::quote), ("quote", special::quote)];
+         ("'",   special::quote), ("quote", special::quote),
+         ("time", special::time), ("each",   special::each)];
 }
 
 pub fn build_symbol(sym: &str) -> AST {
@@ -85,13 +101,12 @@ pub enum AST {
     List(Box<Vec<AST>>),
 }
 
+// Avoid match destructuring when we exactly know the type
 macro_rules! unwrap {
     ($ast:expr, $t:tt, $r:ty) => {
-        {
-            match *$ast {
-                AST::$t(ref x) => x,
-                _ => unreachable!(),
-            }
+        match *$ast {
+            AST::$t(ref x) => x,
+            _ => unreachable!(),
         }
     }
 }
@@ -102,13 +117,15 @@ impl AST {
     pub fn list(&self) -> &Vec<AST> { unwrap!(self, List, &Box<Vec<AST>>).as_ref() }
 }
 
-macro_rules! format_list { ($l:expr) => {
+macro_rules! format_seq { ($l:expr) => {
     {
         let _suf = if $l.len() < FMT_ITEMS_LIMIT { "" } else { "..." };
         format!("{}{}", $l.iter().take(FMT_ITEMS_LIMIT).map(|v| format!("{}", v))
                         .collect::<Vec<_>>().join(" "), _suf)
     }
 }}
+
+macro_rules! format_list { ($l:expr) => { format!("({})", format_seq!($l)) } }
 
 macro_rules! format_builtin {
     ($p:expr,$s:expr) => {
@@ -126,11 +143,11 @@ impl fmt::Display for AST {
             AST::String(ref x) => write!(f, "\"{}\"", x),
             AST::Symbol(x)     => write!(f, "{}", symbol_to_str(x)),
             AST::Function(x)   => write!(f, "{}", format_builtin!(_FUNCTIONS, x)),
-            AST::Lambda(ref x) => write!(f, "(({}) {})", format_list!(x.args), format_list!(x.body)),
+            AST::Lambda(ref x) => write!(f, "({} {})", format_list!(x.args), format_seq!(x.body)),
             AST::Special(x)    => write!(f, "{}", format_builtin!(_SPECIALS, x)),
-            AST::List(ref x)   => write!(f, "({})", format_list!(x)),
-            AST::Vlong(ref x)  => write!(f, "#l[{}]", format_list!(x)),
-            AST::Vfloat(ref x) => write!(f, "#f[{}]", format_list!(x)),
+            AST::List(ref x)   => write!(f, "{}", format_list!(x)),
+            AST::Vlong(ref x)  => write!(f, "#l{}", format_list!(x)),
+            AST::Vfloat(ref x) => write!(f, "#f{}", format_list!(x)),
         }
     }
 }
