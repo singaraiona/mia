@@ -1,5 +1,10 @@
 use mia::*;
 use parser;
+use std::io::Write;
+use std::fs::File;
+use std::io::prelude::*;
+use nom::IResult;
+use eval;
 
 pub fn plus(args: &[AST]) -> Value {
     args.iter().cloned().fold(Ok(NIL!()), |acc, x|
@@ -53,4 +58,16 @@ pub fn pp(args: &[AST]) -> Value {
     let s = pretty(args);
     println!("{}", s);
     Ok(args[0].clone())
+}
+
+pub fn load(args: &[AST]) -> Value {
+    let fl = args[0].string();
+    let mut file = File::open(fl).map_err(|_| io_error!(fl, "does not exist."))?;
+    let mut input = String::new();
+    let size = file.read_to_string(&mut input).map_err(|_| io_error!(fl, "is not readable."))?;
+    match parser::parse(input[..size].as_bytes()) {
+        IResult::Done(_, a) => eval::fold_list(a.as_slice()),
+        IResult::Error(e) => io_err!(format!("{:?}", e)),
+        _ => io_err!("unknown error."),
+    }
 }

@@ -36,24 +36,22 @@ pub fn ifcond(args: &[AST]) -> Value {
     } else { eval(args[2].clone()) }
 }
 
-pub fn each(args: &[AST]) -> Value {
+pub fn forcond(args: &[AST]) -> Value {
     push_frame();
-    let prms  = args[0].list();
-    let syms  = args[1].list();
-
-
-
+    // TODO
     pop_frame();
     nyi_err!()
 }
 
 pub fn whilecond(args: &[AST]) -> Value {
-    let smap = ssymbol!("@").symbol();
+    push_frame();
+    let smap = sym!("@").symbol();
     loop {
         let cond = eval(args[0].clone())?;
         if cond.is_nil() { break; }
         insert_entry(smap, cond);
         let _ = fold_list(&args[1..]);
     }
+    pop_frame();
     Ok(NIL!())
 }

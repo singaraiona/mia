@@ -26,7 +26,9 @@ macro_rules! func {
             unsafe { core::intrinsics::type_name::<T>() }
         }
         let name = type_name_of(f);
-        format!("{}:", &name[6..name.len() - 4])
+        let nm = &name[6..name.len() - 4];
+        let cut = nm.find("::{").unwrap_or(nm.len());
+        format!("{}:", &nm[..cut])
     }}
 }
 
@@ -39,15 +41,25 @@ macro_rules! eval_error { ($($x:expr),+) => { $crate::mia::Error(error_fmt!($($x
 macro_rules! eval_err   { ($($x:expr),+) => { Err(eval_error!($($x),+))               }}
 
 // Common errors
-macro_rules! nyi_err   { ()             => { eval_err!(func!(), "nyi.")                            } }
-macro_rules! args_err  { ($a:expr)      => { eval_err!(func!(), "invalid args:", format_list!($a)) } }
-macro_rules! bound_err { ($($a:expr),+) => { eval_err!(func!(), "index out of bounds:", $($a),+)   } }
+macro_rules! nyi_error   { ()             => { eval_error!(func!(), "nyi.")                            } }
+macro_rules! args_error  { ($a:expr)      => { eval_error!(func!(), "invalid args:", format_list!($a)) } }
+macro_rules! call_error  { ($a:expr)      => { eval_error!(func!(), "call:", $a, "is not callable.")   } }
+macro_rules! undef_error { ($a:expr)      => { eval_error!(func!(), "undefined symbol:", $a)           } }
+macro_rules! bound_error { ($($a:expr),+) => { eval_error!(func!(), "index out of bounds:", $($a),+)   } }
+macro_rules! io_error    { ($($a:expr),+) => { eval_error!(func!(), "I/O:", $($a),+)                   } }
+
+macro_rules! nyi_err     { ()             => { Err(nyi_error!())                                       } }
+macro_rules! args_err    { ($a:expr)      => { Err(args_error!($a))                                    } }
+macro_rules! call_err    { ($a:expr)      => { Err(call_error!($a))                                    } }
+macro_rules! undef_err   { ($a:expr)      => { Err(undef_error!($a))                                   } }
+macro_rules! bound_err   { ($($a:expr),+) => { Err(bound_error!($($a),+))                              } }
+macro_rules! io_err      { ($($a:expr),+) => { Err(io_error!($($a),+))                                 } }
 
 // MIA's datatypes
 macro_rules! long     { ($v:expr)          => { AST::Long($v)                                       } }
 macro_rules! float    { ($v:expr)          => { AST::Float($v)                                      } }
 macro_rules! symbol   { ($v:expr)          => { AST::Symbol($v)                                     } }
-macro_rules! ssymbol  { ($v:expr)          => { AST::Symbol(new_symbol($v.to_string()))             } }
+macro_rules! sym      { ($v:expr)          => { AST::Symbol(new_symbol($v.to_string()))             } }
 macro_rules! NIL      { ()                 => { AST::Symbol(0)                                      } }
 macro_rules! T        { ()                 => { AST::Symbol(1)                                      } }
 macro_rules! STRING   { ($v:expr)          => { AST::String(Box::new($v))                           } }
@@ -66,16 +78,17 @@ pub type Function = fn(&[AST]) -> Value;
 pub type Special  = fn(&[AST]) -> Value;
 
 lazy_static! {
-    static ref _FUNCTIONS: [(&'static str, Function);8] =
+    static ref _FUNCTIONS: [(&'static str, Function);9] =
         [("+",      function::plus), ("-",     function::minus),
          ("til",     function::til), ("=",     function::equal),
          ("eval",  eval::fold_list), ("prin",   function::prin),
-         ("prinl", function::prinl), ("pp",       function::pp)];
+         ("prinl", function::prinl), ("pp",       function::pp),
+         ("load",   function::load)];
 
     static ref _SPECIALS: [(&'static str, Special);8] =
         [("setq",   special::setq), ("de",           special::de),
          ("quote", special::quote), ("'",         special::quote),
-         ("time",   special::time), ("each",       special::each),
+         ("time",   special::time), ("for",     special::forcond),
          ("if",   special::ifcond), ("while", special::whilecond)];
 }
 
@@ -154,7 +167,7 @@ impl AST {
 
 macro_rules! format_seq { ($l:expr) => {
     {
-        let _suf = if $l.len() < FMT_ITEMS_LIMIT { "" } else { "..." };
+        let _suf = if $l.len() < FMT_ITEMS_LIMIT { "" } else { ".." };
         format!("{}{}", $l.iter().take(FMT_ITEMS_LIMIT).map(|v| format!("{}", v))
                         .collect::<Vec<_>>().join(" "), _suf)
     }
@@ -210,15 +223,12 @@ pub fn insert_entry(sym: usize, ast: AST) { unsafe { _STACK.with(|s| { (*s.get()
 pub fn entry(sym: usize) -> Value {
     unsafe {
         _STACK.with(|s| {
-            (*s.get()).entry(sym).ok_or_else(|| eval_error!("Undefined symbol:", symbol_to_str(sym)))
+            (*s.get()).entry(sym).ok_or_else(|| undef_error!(symbol_to_str(sym)))
         })
     }
 }
 
-fn init_builtin_symbol(sym: &str, ast: AST) {
-    let id = new_symbol(sym.to_string());
-    insert_entry(id, ast);
-}
+fn init_builtin_symbol(sym: &str, ast: AST) { insert_entry(sym!(sym).symbol(), ast) }
 
 pub fn push_frame() { unsafe { _STACK.with(|s| (*s.get()).push_frame()) } }
 

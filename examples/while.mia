@@ -1,0 +1,2 @@
+(setq cond T)
+(while cond (prinl "iter: " @) (setq cond NIL))

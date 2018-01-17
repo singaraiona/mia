@@ -33,9 +33,9 @@ fn call(car: AST, cdr: &[AST]) -> Value {
         },
         AST::Vlong(ref l) => {
             l.get(cdr[0].long() as usize).map(|&x| long!(x))
-            .ok_or_else(|| eval_error!("Index out of bounds:", car, format_list!(cdr)))
+            .ok_or_else(|| bound_error!(car, format_list!(cdr)))
         },
         l @ AST::List(_) => call(eval(l)?, cdr),
-        x => eval_err!("CAR: expected callable, found:", x)
+        x => call_err!(x)
     }
 }
