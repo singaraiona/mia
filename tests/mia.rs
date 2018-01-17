@@ -32,3 +32,4 @@ test!(plus,  "(+ 1 2 3)", "6");
 //test!(minus, "(- 1 2)", "-1");
 test!(setq,  "(setq t (+ 1 2)) t", "3");
 test!(eq, "(= 1 1)", "T");
+test!(ifcond, "(if (= 1 1) T NIL)", "T");
