@@ -1,41 +1,44 @@
 use mia::*;
+use context::Context;
 
-pub fn fold_list(list: &[AST]) -> Value { list.iter().try_fold(NIL!(), |_, x| eval(x.clone())) }
+pub fn fold_list(list: &[AST], ctx: &mut Context) -> Value { list.iter().try_fold(NIL!(), |_, x| eval(x, ctx)) }
 
-pub fn eval_list(list: &[AST]) -> Value { Ok(LIST!(list.iter().cloned().map(|x| eval(x)).collect::<Vvalue>()?)) }
+pub fn eval_list(list: &[AST], ctx: &mut Context) -> Value {
+    Ok(LIST!(list.iter().map(|x| eval(x, ctx)).collect::<Vvalue>()?))
+}
 
-pub fn eval(ast: AST) -> Value {
-    match ast {
+pub fn eval(ast: &AST, ctx: &mut Context) -> Value {
+    match *ast {
         AST::List(ref l) if !l.is_empty() => {
             match l[0] {
-                AST::Symbol(s) => call(entry(s)?, &l[1..]),
-                ref f          => call(f.clone(), &l[1..]),
+                AST::Symbol(s) => call(entry(s)?, &l[1..], ctx),
+                ref f          => call(f, &l[1..], ctx),
             }
         }
-        AST::Symbol(s) => entry(s),
-        a => Ok(a),
+        AST::Symbol(s) => Ok(entry(s)?.clone()),
+        ref a => Ok(a.clone()),
     }
 }
 
 #[inline]
-fn call(car: AST, cdr: &[AST]) -> Value {
-    match car {
-        AST::Function(f) => (f)(cdr.iter().cloned().map(|x| eval(x)).collect::<Vvalue>()?.as_slice()),
-        AST::Special(f)  => (f)(cdr),
+fn call(car: &AST, cdr: &[AST], ctx: &mut Context) -> Value {
+    match *car {
+        AST::Function(f) => (f)(cdr.iter().map(|x| eval(x, ctx)).collect::<Vvalue>()?.as_slice(), ctx),
+        AST::Special(f)  => (f)(cdr, ctx),
         AST::Lambda(box Lambda { ref args, ref body }) => {
-            push_frame();
+            ctx.push_frame();
             for (s, v) in args.iter().zip(cdr.iter()) {
-                insert_entry(s.symbol(), eval(v.clone())?);
+                insert_entry(s.symbol(), eval(v, ctx)?);
             }
-            let r = fold_list(body.as_slice());
-            pop_frame();
+            let r = fold_list(body.as_slice(), ctx);
+            ctx.pop_frame();
             r
         },
         AST::Vlong(ref l) => {
             l.get(cdr[0].long() as usize).map(|&x| long!(x))
             .ok_or_else(|| bound_error!(car, format_list!(cdr)))
         },
-        l @ AST::List(_) => call(eval(l)?, cdr),
-        x => call_err!(x)
+        ref l @ AST::List(_) => call(&eval(l, ctx)?, cdr, ctx),
+        ref x => call_err!(x)
     }
 }

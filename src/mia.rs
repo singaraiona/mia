@@ -5,6 +5,7 @@ use function;
 use special;
 use stack::Stack;
 use eval;
+use context::*;
 
 pub const FMT_ITEMS_LIMIT: usize = 30;
 
@@ -41,19 +42,21 @@ macro_rules! eval_error { ($($x:expr),+) => { $crate::mia::Error(error_fmt!($($x
 macro_rules! eval_err   { ($($x:expr),+) => { Err(eval_error!($($x),+))               }}
 
 // Common errors
-macro_rules! nyi_error   { ()             => { eval_error!(func!(), "nyi.")                            } }
-macro_rules! args_error  { ($a:expr)      => { eval_error!(func!(), "invalid args:", format_list!($a)) } }
-macro_rules! call_error  { ($a:expr)      => { eval_error!(func!(), "call:", $a, "is not callable.")   } }
-macro_rules! undef_error { ($a:expr)      => { eval_error!(func!(), "undefined symbol:", $a)           } }
-macro_rules! bound_error { ($($a:expr),+) => { eval_error!(func!(), "index out of bounds:", $($a),+)   } }
-macro_rules! io_error    { ($($a:expr),+) => { eval_error!(func!(), "I/O:", $($a),+)                   } }
+macro_rules! nyi_error   { ()                 => { eval_error!(func!(), "nyi.")                                     } }
+macro_rules! args_error  { ($a:expr)          => { eval_error!(func!(), "invalid args:", format_list!($a))          } }
+macro_rules! call_error  { ($a:expr)          => { eval_error!(func!(), "call:", $a, "is not callable.")            } }
+macro_rules! undef_error { ($a:expr)          => { eval_error!(func!(), "undefined symbol:", $a)                    } }
+macro_rules! bound_error { ($($a:expr),+)     => { eval_error!(func!(), "index out of bounds:", $($a),+)            } }
+macro_rules! io_error    { ($($a:expr),+)     => { eval_error!(func!(), "I/O:", $($a),+)                            } }
+macro_rules! arity_error { ($x:expr, $y:expr) => { eval_error!(func!(), "expected", $x, "arguments,", $y, "passed.") } }
 
-macro_rules! nyi_err     { ()             => { Err(nyi_error!())                                       } }
-macro_rules! args_err    { ($a:expr)      => { Err(args_error!($a))                                    } }
-macro_rules! call_err    { ($a:expr)      => { Err(call_error!($a))                                    } }
-macro_rules! undef_err   { ($a:expr)      => { Err(undef_error!($a))                                   } }
-macro_rules! bound_err   { ($($a:expr),+) => { Err(bound_error!($($a),+))                              } }
-macro_rules! io_err      { ($($a:expr),+) => { Err(io_error!($($a),+))                                 } }
+macro_rules! nyi_err     { ()             => { Err(nyi_error!())                                                    } }
+macro_rules! args_err    { ($a:expr)      => { Err(args_error!($a))                                                 } }
+macro_rules! call_err    { ($a:expr)      => { Err(call_error!($a))                                                 } }
+macro_rules! undef_err   { ($a:expr)      => { Err(undef_error!($a))                                                } }
+macro_rules! bound_err   { ($($a:expr),+) => { Err(bound_error!($($a),+))                                           } }
+macro_rules! io_err      { ($($a:expr),+) => { Err(io_error!($($a),+))                                              } }
+macro_rules! arity_err   { ($x:expr, $y:expr) => { Err(arity_error!($x, $y))                                        } }
 
 // MIA's datatypes
 macro_rules! long     { ($v:expr)          => { AST::Long($v)                                       } }
@@ -73,9 +76,9 @@ macro_rules! LIST     { ($v:expr)          => { AST::List(Box::new($v))         
 pub type Value    = Result<AST, Error>;
 pub type Vvalue   = Result<Vec<AST>, Error>;
 // Evaluates all arguments before call
-pub type Function = fn(&[AST]) -> Value;
+pub type Function = fn(&[AST], &mut Context) -> Value;
 // It's up to calee to decide if arguments need evaluation
-pub type Special  = fn(&[AST]) -> Value;
+pub type Special  = fn(&[AST], &mut Context) -> Value;
 
 lazy_static! {
     static ref _FUNCTIONS: [(&'static str, Function);9] =
@@ -148,11 +151,11 @@ macro_rules! unwrap {
 }
 
 impl AST {
-    pub fn long(&self) -> i64 { *unwrap!(self, Long, i64) }
-    pub fn symbol(&self) -> usize { *unwrap!(self, Symbol, usize) }
-    pub fn list(&self) -> &Vec<AST> { unwrap!(self, List, &Box<Vec<AST>>).as_ref() }
-    pub fn string(&self) -> &str { unwrap!(self, String, String).as_str() }
-    pub fn is_nil(&self) -> bool {
+    pub fn long(&self)   -> i64       { *unwrap!(self, Long, i64)                     }
+    pub fn symbol(&self) -> usize     { *unwrap!(self, Symbol, usize)                 }
+    pub fn list(&self)   -> &Vec<AST> {  unwrap!(self, List, &Box<Vec<AST>>).as_ref() }
+    pub fn string(&self) -> &str      {  unwrap!(self, String, String).as_str()       }
+    pub fn is_nil(&self) -> bool      {
         match *self {
             AST::Symbol(s) => s == 0,
             AST::List(ref l) => l.is_empty(),
@@ -198,45 +201,5 @@ impl fmt::Display for AST {
             AST::Vfloat(ref x) => write!(f, "#f{}", format_list!(x)),
         }
     }
-}
-
-thread_local! {
-    pub static _SYMBOLS: UnsafeCell<Vec<String>> = UnsafeCell::new(Vec::new());
-    pub static _STACK:   UnsafeCell<Stack>       = UnsafeCell::new(Stack::new());
-}
-
-pub fn new_symbol(sym: String) -> usize {
-    unsafe {
-        _SYMBOLS.with(|s| {
-            let syms = &mut (*s.get());
-            for (i, x) in syms.iter().enumerate() { if *x == sym { return i; } }
-            syms.push(sym);
-            syms.len() - 1
-        })
-    }
-}
-
-pub fn symbol_to_str(sym: usize) -> &'static str { unsafe { _SYMBOLS.with(|s| &(*s.get())[sym]) } }
-
-pub fn insert_entry(sym: usize, ast: AST) { unsafe { _STACK.with(|s| { (*s.get()).insert(sym, ast) }); } }
-
-pub fn entry(sym: usize) -> Value {
-    unsafe {
-        _STACK.with(|s| {
-            (*s.get()).entry(sym).ok_or_else(|| undef_error!(symbol_to_str(sym)))
-        })
-    }
-}
-
-fn init_builtin_symbol(sym: &str, ast: AST) { insert_entry(sym!(sym).symbol(), ast) }
-
-pub fn push_frame() { unsafe { _STACK.with(|s| (*s.get()).push_frame()) } }
-
-pub fn pop_frame() { unsafe { _STACK.with(|s| (*s.get()).pop_frame()) } }
-
-pub fn init_builtin_symbols() {
-    init_builtin_symbol("NIL",  NIL!());
-    init_builtin_symbol("T",    T!());
-    init_builtin_symbol("@",    NIL!());
 }
 
