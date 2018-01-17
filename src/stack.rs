@@ -8,7 +8,7 @@ impl Frame {
 
     fn insert(&mut self, key: usize, val: AST) { self.0.insert(key, val); }
 
-    fn entry(&self, key: usize) -> Option<AST> { self.0.get(&key).map(|a| a.clone()) }
+    fn entry(&self, key: usize) -> Option<&AST> { self.0.get(&key) }
 }
 
 pub struct Stack(Vec<Frame>);
@@ -22,7 +22,7 @@ impl Stack {
 
     pub fn insert(&mut self, key: usize, val: AST) { self.last().insert(key, val); }
 
-    pub fn entry(&mut self, key: usize) -> Option<AST> {
+    pub fn entry(&mut self, key: usize) -> Option<&AST> {
         for e in self.0.iter().rev() {
             let r = e.entry(key);
             if r.is_some() { return r }

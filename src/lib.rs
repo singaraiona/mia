@@ -13,5 +13,6 @@ pub mod mia;
 pub mod parser;
 pub mod eval;
 pub mod stack;
+pub mod context;
 pub mod function;
 pub mod special;
