@@ -36,7 +36,6 @@ pub fn ifcond(args: &[AST]) -> Value {
     } else { eval(args[2].clone()) }
 }
 
-
 pub fn each(args: &[AST]) -> Value {
     push_frame();
     let prms  = args[0].list();

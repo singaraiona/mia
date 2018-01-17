@@ -65,10 +65,11 @@ pub type Function = fn(&[AST]) -> Value;
 pub type Special  = fn(&[AST]) -> Value;
 
 lazy_static! {
-    static ref _FUNCTIONS: [(&'static str, Function);5] =
-        [("+",     function::plus), ("-",     function::minus),
-         ("til",    function::til), ("=",     function::equal),
-         ("eval", eval::fold_list)];
+    static ref _FUNCTIONS: [(&'static str, Function);8] =
+        [("+",      function::plus), ("-",     function::minus),
+         ("til",     function::til), ("=",     function::equal),
+         ("eval",  eval::fold_list), ("prin",   function::prin),
+         ("prinl", function::prinl), ("pp",       function::pp)];
 
     static ref _SPECIALS: [(&'static str, Special);7] =
         [("setq",   special::setq), ("de",       special::de),
@@ -109,15 +110,15 @@ impl PartialEq for AST {
     fn eq(&self, other: &AST) -> bool {
         if mem::discriminant(self) != mem::discriminant(other) { return false; }
         match (self, other) {
-            (&AST::Long(l), &AST::Long(r)) => l == r,
-            (&AST::Float(l), &AST::Float(r)) => l == r,
-            (&AST::Symbol(l), &AST::Symbol(r)) => l == r,
-            (&AST::Function(l), &AST::Function(r)) => l as i64 == r as i64,
-            (&AST::Special(l), &AST::Special(r)) => l as i64 == r as i64,
-            (&AST::Vlong(ref l), &AST::Vlong(ref r)) => l == r,
+            (&AST::Long(l),       &AST::Long(r))       => l == r,
+            (&AST::Float(l),      &AST::Float(r))      => l == r,
+            (&AST::Symbol(l),     &AST::Symbol(r))     => l == r,
+            (&AST::Function(l),   &AST::Function(r))   => l as i64 == r as i64,
+            (&AST::Special(l),    &AST::Special(r))    => l as i64 == r as i64,
+            (&AST::Vlong(ref l),  &AST::Vlong(ref r))  => l == r,
             (&AST::Vfloat(ref l), &AST::Vfloat(ref r)) => l == r,
-            (&AST::List(ref l), &AST::List(ref r)) => l.iter().zip(r.iter()).all(|(l, r)| l == r),
-            _ => false,
+            (&AST::List(ref l),   &AST::List(ref r))   => l.iter().zip(r.iter()).all(|(l, r)| l == r),
+            _                                          => false,
         }
     }
 }
@@ -143,6 +144,10 @@ impl AST {
             AST::List(ref l) => l.is_empty(),
             _ => false,
         }
+    }
+    pub fn to_string(&self) -> String {
+        if let AST::String(ref s) = *self { return format!("{}", s); }
+        format!("{}", self)
     }
 }
 

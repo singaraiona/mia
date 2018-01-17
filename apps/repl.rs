@@ -19,13 +19,13 @@ fn main() {
         match parser::parse(&input[..size]) {
             IResult::Done(_, a) => {
                 match eval::fold_list(a.as_slice()) {
-                    Ok(e)  => println!("{}", e),
-                    Err(e) => println!("{}", e)
+                    Ok(e)  => println!("-> {}", e),
+                    Err(e) => println!("-> {}", e)
                 }
             }
-            IResult::Error(e) => println!("{:?}", e),
+            IResult::Error(e) => println!("-> {:?}", e),
             _ => {
-                println!("Error");
+                println!("-> Error");
             }
         }
         ps1();

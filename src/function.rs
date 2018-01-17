@@ -30,3 +30,27 @@ pub fn til(args: &[AST]) -> Value {
     Ok(LONG!(vec))
 }
 
+pub fn prin(args: &[AST]) -> Value {
+    print!("{}", args.iter().map(|a| a.to_string()).collect::<String>());
+    Ok(args[0].clone())
+}
+
+pub fn prinl(args: &[AST]) -> Value {
+    println!("{}", args.iter().map(|a| a.to_string()).collect::<String>());
+    Ok(args[0].clone())
+}
+
+fn pretty(args: &[AST]) -> String {
+    args.iter().map(|a| {
+         match a {
+             &AST::List(ref l) if l.len() > FMT_ITEMS_LIMIT => { format!("({}\n    {})", l[0], pretty(&l[1..])) }
+             x => format!("{}", x),
+         }
+    }).collect::<Vec<String>>().join("\n")
+}
+
+pub fn pp(args: &[AST]) -> Value {
+    let s = pretty(args);
+    println!("{}", s);
+    Ok(args[0].clone())
+}
