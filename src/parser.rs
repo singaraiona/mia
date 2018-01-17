@@ -31,7 +31,7 @@ named!(long<i64>,
     )
 );
 named!(string<String>, delimited!(tag!("\""), string_content, tag!("\"")));
-named!(symbol<&str>,   map_res!(alphanumeric, str::from_utf8));
+named!(symbol<&str>,   map_res!(alt!(alphanumeric | tag!("@")), str::from_utf8));
 named!(verb<&str>,     map_res!(
     alt!(
         tag!("+") |

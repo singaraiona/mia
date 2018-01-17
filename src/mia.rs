@@ -47,6 +47,7 @@ macro_rules! bound_err { ($($a:expr),+) => { eval_err!(func!(), "index out of bo
 macro_rules! long     { ($v:expr)          => { AST::Long($v)                                       } }
 macro_rules! float    { ($v:expr)          => { AST::Float($v)                                      } }
 macro_rules! symbol   { ($v:expr)          => { AST::Symbol($v)                                     } }
+macro_rules! ssymbol  { ($v:expr)          => { AST::Symbol(new_symbol($v.to_string()))             } }
 macro_rules! NIL      { ()                 => { AST::Symbol(0)                                      } }
 macro_rules! T        { ()                 => { AST::Symbol(1)                                      } }
 macro_rules! STRING   { ($v:expr)          => { AST::String(Box::new($v))                           } }
@@ -71,11 +72,11 @@ lazy_static! {
          ("eval",  eval::fold_list), ("prin",   function::prin),
          ("prinl", function::prinl), ("pp",       function::pp)];
 
-    static ref _SPECIALS: [(&'static str, Special);7] =
-        [("setq",   special::setq), ("de",       special::de),
-         ("quote", special::quote), ("'",     special::quote),
-         ("time",   special::time), ("each",   special::each),
-         ("if",   special::ifcond)];
+    static ref _SPECIALS: [(&'static str, Special);8] =
+        [("setq",   special::setq), ("de",           special::de),
+         ("quote", special::quote), ("'",         special::quote),
+         ("time",   special::time), ("each",       special::each),
+         ("if",   special::ifcond), ("while", special::whilecond)];
 }
 
 pub fn build_symbol(sym: &str) -> AST {
@@ -226,5 +227,6 @@ pub fn pop_frame() { unsafe { _STACK.with(|s| (*s.get()).pop_frame()) } }
 pub fn init_builtin_symbols() {
     init_builtin_symbol("NIL",  NIL!());
     init_builtin_symbol("T",    T!());
+    init_builtin_symbol("@",    NIL!());
 }
 

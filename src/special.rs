@@ -46,3 +46,14 @@ pub fn each(args: &[AST]) -> Value {
     pop_frame();
     nyi_err!()
 }
+
+pub fn whilecond(args: &[AST]) -> Value {
+    let smap = ssymbol!("@").symbol();
+    loop {
+        let cond = eval(args[0].clone())?;
+        if cond.is_nil() { break; }
+        insert_entry(smap, cond);
+        let _ = fold_list(&args[1..]);
+    }
+    Ok(NIL!())
+}
