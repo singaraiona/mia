@@ -30,6 +30,13 @@ pub fn time(args: &[AST]) -> Value {
     Ok(long!(((secs + nsecs) / 1000_000) as i64))
 }
 
+pub fn ifcond(args: &[AST]) -> Value {
+    if !eval(args[0].clone())?.is_nil() {
+        eval(args[1].clone())
+    } else { eval(args[2].clone()) }
+}
+
+
 pub fn each(args: &[AST]) -> Value {
     push_frame();
     let prms  = args[0].list();

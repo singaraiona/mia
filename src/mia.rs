@@ -1,8 +1,10 @@
 use std::fmt;
+use std::mem;
 use std::cell::UnsafeCell;
 use function;
 use special;
 use stack::Stack;
+use eval;
 
 pub const FMT_ITEMS_LIMIT: usize = 30;
 
@@ -63,14 +65,16 @@ pub type Function = fn(&[AST]) -> Value;
 pub type Special  = fn(&[AST]) -> Value;
 
 lazy_static! {
-    static ref _FUNCTIONS: [(&'static str, Function);3] =
-        [("+",   function::plus), ("-",    function::minus),
-         ("til",  function::til)];
+    static ref _FUNCTIONS: [(&'static str, Function);5] =
+        [("+",     function::plus), ("-",     function::minus),
+         ("til",    function::til), ("=",     function::equal),
+         ("eval", eval::fold_list)];
 
-    static ref _SPECIALS: [(&'static str, Special);6] =
-        [("setq", special::setq), ("de",       special::de),
-         ("'",   special::quote), ("quote", special::quote),
-         ("time", special::time), ("each",   special::each)];
+    static ref _SPECIALS: [(&'static str, Special);7] =
+        [("setq",   special::setq), ("de",       special::de),
+         ("quote", special::quote), ("'",     special::quote),
+         ("time",   special::time), ("each",   special::each),
+         ("if",   special::ifcond)];
 }
 
 pub fn build_symbol(sym: &str) -> AST {
@@ -101,6 +105,23 @@ pub enum AST {
     List(Box<Vec<AST>>),
 }
 
+impl PartialEq for AST {
+    fn eq(&self, other: &AST) -> bool {
+        if mem::discriminant(self) != mem::discriminant(other) { return false; }
+        match (self, other) {
+            (&AST::Long(l), &AST::Long(r)) => l == r,
+            (&AST::Float(l), &AST::Float(r)) => l == r,
+            (&AST::Symbol(l), &AST::Symbol(r)) => l == r,
+            (&AST::Function(l), &AST::Function(r)) => l as i64 == r as i64,
+            (&AST::Special(l), &AST::Special(r)) => l as i64 == r as i64,
+            (&AST::Vlong(ref l), &AST::Vlong(ref r)) => l == r,
+            (&AST::Vfloat(ref l), &AST::Vfloat(ref r)) => l == r,
+            (&AST::List(ref l), &AST::List(ref r)) => l.iter().zip(r.iter()).all(|(l, r)| l == r),
+            _ => false,
+        }
+    }
+}
+
 // Avoid match destructuring when we exactly know the type
 macro_rules! unwrap {
     ($ast:expr, $t:tt, $r:ty) => {
@@ -115,6 +136,14 @@ impl AST {
     pub fn long(&self) -> i64 { *unwrap!(self, Long, i64) }
     pub fn symbol(&self) -> usize { *unwrap!(self, Symbol, usize) }
     pub fn list(&self) -> &Vec<AST> { unwrap!(self, List, &Box<Vec<AST>>).as_ref() }
+    pub fn string(&self) -> &str { unwrap!(self, String, String).as_str() }
+    pub fn is_nil(&self) -> bool {
+        match *self {
+            AST::Symbol(s) => s == 0,
+            AST::List(ref l) => l.is_empty(),
+            _ => false,
+        }
+    }
 }
 
 macro_rules! format_seq { ($l:expr) => {

@@ -38,6 +38,7 @@ named!(verb<&str>,     map_res!(
         tag!("-") |
         tag!("*") |
         tag!("/") |
+        tag!("=") |
         tag!("'")), str::from_utf8));
 named!(
     string_content<String>,

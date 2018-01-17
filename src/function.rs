@@ -1,4 +1,5 @@
 use mia::*;
+use parser;
 
 pub fn plus(args: &[AST]) -> Value {
     args.iter().cloned().fold(Ok(NIL!()), |acc, x|
@@ -20,6 +21,8 @@ pub fn times(args: &[AST]) -> Value {
 pub fn divide(args: &[AST]) -> Value {
     nyi_err!()
 }
+
+pub fn equal(args: &[AST]) -> Value { if args[0] == args[1] { Ok(T!()) } else { Ok(NIL!()) } }
 
 pub fn til(args: &[AST]) -> Value {
     let len = args[0].long();
