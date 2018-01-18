@@ -15,7 +15,8 @@ impl Context {
     pub fn insert_entry(&mut self, sym: usize, ast: AST) { self.stack.insert(sym, ast); }
 
     pub fn entry(&self, sym: usize) -> Result<&AST, Error> {
-        self.stack.entry(sym).ok_or_else(|| undef_error!(symbol_to_str(sym)))
+        Ok(self.stack.entry(sym))
+        //.ok_or_else(|| undef_error!(symbol_to_str(sym)))
     }
 
     pub fn push_frame(&mut self) { self.stack.push_frame() }

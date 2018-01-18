@@ -11,14 +11,18 @@ pub fn quote(args: &[AST], ctx: &mut Context) -> Value {
 }
 
 pub fn setq(args: &[AST], ctx: &mut Context) -> Value {
-    match (&args[0], &args[1]) {
-        (&AST::Symbol(l), rhs) => {
-            let e = eval(rhs, ctx)?;
-            ctx.insert_entry(l as usize, e);
-            Ok(rhs.clone())
-        },
-        _ => { args_err!(args) },
-    }
+    let e = eval(&args[1], ctx)?;
+    ctx.insert_entry(args[0].symbol(), e);
+    Ok(T!())
+
+    //match (&args[0], &args[1]) {
+        //(&AST::Symbol(l), rhs) => {
+            //let e = eval(rhs, ctx)?;
+            //ctx.insert_entry(l as usize, e);
+            //Ok(rhs.clone())
+        //},
+        //_ => { args_err!(args) },
+    //}
 }
 
 pub fn de(args: &[AST], ctx: &mut Context) -> Value {
@@ -49,14 +53,15 @@ pub fn forcond(args: &[AST], ctx: &mut Context) -> Value {
 }
 
 pub fn whilecond(args: &[AST], ctx: &mut Context) -> Value {
-    ctx.push_frame();
-    let smap = sym!("@").symbol();
-    loop {
-        let cond = eval(&args[0], ctx)?;
-        if cond.is_nil() { break; }
-        ctx.insert_entry(smap, cond);
-        let _ = fold_list(&args[1..], ctx);
+    //ctx.push_frame();
+    //let smap = sym!("@").symbol();
+    while !eval(&args[0], ctx)?.is_nil() {
+        //let cond = eval(&args[0], ctx)?;
+        //if cond.is_nil() { break; }
+        //ctx.insert_entry(smap, cond);
+        eval(&args[1], ctx);
+        //let _ = fold_list(&args[1..], ctx);
     }
-    ctx.pop_frame();
+    //ctx.pop_frame();
     Ok(NIL!())
 }

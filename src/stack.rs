@@ -1,14 +1,14 @@
 use mia::*;
 use fnv::FnvHashMap;
 
-struct Frame(FnvHashMap<usize, AST>);
+struct Frame(Vec<AST>);
 
 impl Frame {
-    fn new() -> Self { Frame(FnvHashMap::with_capacity_and_hasher(10000, Default::default())) }
+    fn new() -> Self { Frame(vec![NIL!();256]) }
 
-    fn insert(&mut self, key: usize, val: AST) { self.0.insert(key, val); }
+    fn insert(&mut self, key: usize, val: AST) { self.0[key] = val; }
 
-    fn entry(&self, key: usize) -> Option<&AST> { self.0.get(&key) }
+    fn entry(&self, key: usize) -> &AST { &self.0[key] }
 }
 
 pub struct Stack(Vec<Frame>);
@@ -22,12 +22,13 @@ impl Stack {
 
     pub fn insert(&mut self, key: usize, val: AST) { self.last().insert(key, val); }
 
-    pub fn entry(&self, key: usize) -> Option<&AST> {
-        for e in self.0.iter().rev() {
-            let r = e.entry(key);
-            if r.is_some() { return r }
-        }
-        None
+    pub fn entry(&self, key: usize) -> &AST {
+        &self.0[self.0.len() -1].0[key]
+        //for e in self.0.iter().rev() {
+            //let r = e.entry(key);
+            //if !r.is_nil() { return r }
+        //}
+        //None
     }
 
     // Assume we always have at least one frame.

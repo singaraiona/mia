@@ -29,13 +29,13 @@ fn call(car: &AST, cdr: &[AST], ctx: &mut Context) -> Value {
         AST::Function(f) => (f)(cdr.iter().map(|x| eval(x, ctx)).collect::<Vvalue>()?.as_slice(), ctx),
         AST::Special(f)  => (f)(cdr, ctx),
         AST::Lambda(box Lambda { ref args, ref body }) => {
-            ctx.push_frame();
+            //ctx.push_frame();
             for (s, v) in args.iter().zip(cdr.iter()) {
                 let e = eval(v, ctx)?;
                 ctx.insert_entry(s.symbol(), e);
             }
             let r = fold_list(body.as_slice(), ctx);
-            ctx.pop_frame();
+            //ctx.pop_frame();
             r
         },
         AST::Vlong(ref l) => {
