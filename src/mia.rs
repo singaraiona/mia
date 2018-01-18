@@ -96,9 +96,10 @@ lazy_static! {
 }
 
 pub fn build_symbol(sym: &str) -> AST {
-    for f in _FUNCTIONS.iter() { if f.0 == sym { return AST::Function(f.1) } }
-    for s in _SPECIALS.iter()  { if s.0 == sym { return AST::Special(s.1) } }
-    symbol!(new_symbol(sym.to_string()))
+    //for f in _FUNCTIONS.iter() { if f.0 == sym { return AST::Function(f.1) } }
+    //for s in _SPECIALS.iter()  { if s.0 == sym { return AST::Special(s.1) } }
+    //symbol!(new_symbol(sym.to_string()))
+    NIL!()
 }
 
 pub fn quoted(a: AST) -> AST { LIST!(vec![SPECIAL!(special::quote), a]) }
