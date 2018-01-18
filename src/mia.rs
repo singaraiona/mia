@@ -62,7 +62,7 @@ macro_rules! arity_err   { ($x:expr, $y:expr) => { Err(arity_error!($x, $y))    
 macro_rules! long     { ($v:expr)          => { AST::Long($v)                                       } }
 macro_rules! float    { ($v:expr)          => { AST::Float($v)                                      } }
 macro_rules! symbol   { ($v:expr)          => { AST::Symbol($v)                                     } }
-macro_rules! sym      { ($v:expr)          => { AST::Symbol(new_symbol($v.to_string()))             } }
+macro_rules! sym      { ($v:expr)          => { AST::Symbol($crate::mia::new_symbol($v.to_string())) } }
 macro_rules! NIL      { ()                 => { AST::Symbol(0)                                      } }
 macro_rules! T        { ()                 => { AST::Symbol(1)                                      } }
 macro_rules! STRING   { ($v:expr)          => { AST::String(Box::new($v))                           } }
@@ -93,13 +93,6 @@ lazy_static! {
          ("quote", special::quote), ("'",         special::quote),
          ("time",   special::time), ("for",     special::forcond),
          ("if",   special::ifcond), ("while", special::whilecond)];
-}
-
-pub fn build_symbol(sym: &str) -> AST {
-    //for f in _FUNCTIONS.iter() { if f.0 == sym { return AST::Function(f.1) } }
-    //for s in _SPECIALS.iter()  { if s.0 == sym { return AST::Special(s.1) } }
-    //symbol!(new_symbol(sym.to_string()))
-    NIL!()
 }
 
 pub fn quoted(a: AST) -> AST { LIST!(vec![SPECIAL!(special::quote), a]) }
@@ -200,7 +193,30 @@ impl fmt::Display for AST {
             AST::List(ref x)   => write!(f, "{}", format_list!(x)),
             AST::Vlong(ref x)  => write!(f, "#l{}", format_list!(x)),
             AST::Vfloat(ref x) => write!(f, "#f{}", format_list!(x)),
+            _ => write!(f, "sym"),
         }
     }
 }
 
+thread_local! {
+    pub static _SYMBOLS: UnsafeCell<Vec<String>> = UnsafeCell::new(Vec::new());
+}
+
+pub fn new_symbol(sym: String) -> usize {
+    unsafe {
+        _SYMBOLS.with(|s| {
+            let syms = &mut (*s.get());
+            for (i, x) in syms.iter().enumerate() { if *x == sym { return i; } }
+            syms.push(sym);
+            syms.len() - 1
+        })
+    }
+}
+
+pub fn symbol_to_str(sym: usize) -> &'static str { unsafe { _SYMBOLS.with(|s| &(*s.get())[sym]) } }
+
+pub fn build_symbol(sym: &str) -> AST {
+    for f in _FUNCTIONS.iter() { if f.0 == sym { return AST::Function(f.1) } }
+    for s in _SPECIALS.iter()  { if s.0 == sym { return AST::Special(s.1) } }
+    symbol!(new_symbol(sym.to_string()))
+}

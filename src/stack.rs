@@ -22,7 +22,7 @@ impl Stack {
 
     pub fn insert(&mut self, key: usize, val: AST) { self.last().insert(key, val); }
 
-    pub fn entry(&mut self, key: usize) -> Option<&AST> {
+    pub fn entry(&self, key: usize) -> Option<&AST> {
         for e in self.0.iter().rev() {
             let r = e.entry(key);
             if r.is_some() { return r }

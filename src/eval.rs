@@ -11,11 +11,14 @@ pub fn eval(ast: &AST, ctx: &mut Context) -> Value {
     match *ast {
         AST::List(ref l) if !l.is_empty() => {
             match l[0] {
-                AST::Symbol(s) => call(entry(s)?, &l[1..], ctx),
+                AST::Symbol(s) => {
+                    let e = ctx.entry(s)?.clone();
+                    call(&e, &l[1..], ctx)
+                },
                 ref f          => call(f, &l[1..], ctx),
             }
         }
-        AST::Symbol(s) => Ok(entry(s)?.clone()),
+        AST::Symbol(s) => Ok(ctx.entry(s)?.clone()),
         ref a => Ok(a.clone()),
     }
 }
@@ -28,7 +31,8 @@ fn call(car: &AST, cdr: &[AST], ctx: &mut Context) -> Value {
         AST::Lambda(box Lambda { ref args, ref body }) => {
             ctx.push_frame();
             for (s, v) in args.iter().zip(cdr.iter()) {
-                insert_entry(s.symbol(), eval(v, ctx)?);
+                let e = eval(v, ctx)?;
+                ctx.insert_entry(s.symbol(), e);
             }
             let r = fold_list(body.as_slice(), ctx);
             ctx.pop_frame();

@@ -5,7 +5,7 @@ use nom::IResult;
 use std::io::{self, Read, Write};
 use mia::parser;
 use mia::eval;
-use mia::mia::{AST, init_builtin_symbols};
+use mia::mia::AST;
 use mia::context::Context;
 
 fn ps1() { print!(": "); io::stdout().flush().unwrap(); }
@@ -19,15 +19,13 @@ fn main() {
         let size = io::stdin().read(&mut input).expect("STDIN error.");
         match parser::parse(&input[..size]) {
             IResult::Done(_, a) => {
-                match eval::fold_list(a.as_slice(), ctx) {
+                match eval::fold_list(a.as_slice(), &mut ctx) {
                     Ok(e)  => println!("-> {}", e),
                     Err(e) => println!("-> {}", e)
                 }
             }
             IResult::Error(e) => println!("-> {:?}", e),
-            _ => {
-                println!("-> Error");
-            }
+            _ => println!("-> Error"),
         }
         ps1();
     }

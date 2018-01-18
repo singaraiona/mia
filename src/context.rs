@@ -1,25 +1,16 @@
 use stack::Stack;
-use mia::AST;
+use mia::{Error, AST, symbol_to_str};
 
 pub struct Context {
-    pub syms: Vec<String>,
     pub stack: Stack,
 }
 
 impl Context {
     pub fn new() -> Self {
-        let mut c = Context { syms: Vec::with_capacity(256), stack: Stack::new() };
+        let mut c = Context { stack: Stack::new() };
         c.init_builtin_symbols();
         c
     }
-
-    pub fn new_symbol(&mut self, sym: String) -> usize {
-        for (i, x) in self.syms.iter().enumerate() { if *x == sym { return i; } }
-        self.syms.push(sym);
-        self.syms.len() - 1
-    }
-
-    pub fn symbol_to_str(&self, sym: usize) -> &str { self.syms[sym].as_str() }
 
     pub fn insert_entry(&mut self, sym: usize, ast: AST) { self.stack.insert(sym, ast); }
 
@@ -31,7 +22,10 @@ impl Context {
 
     pub fn pop_frame(&mut self) { self.stack.pop_frame() }
 
-    fn init_builtin_symbol(&mut self, sym: &str, ast: AST) { self.insert_entry(sym!(sym).symbol(), ast) }
+    fn init_builtin_symbol(&mut self, sym: &str, ast: AST) {
+        let id = sym!(sym).symbol();
+        self.insert_entry(id, ast)
+    }
 
     fn init_builtin_symbols(&mut self) {
         self.init_builtin_symbol("NIL",  NIL!());

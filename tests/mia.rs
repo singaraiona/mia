@@ -8,15 +8,17 @@ use nom::IResult;
 use std::io::{self, Read, Write};
 use mia::parser;
 use mia::eval;
-use mia::mia::{AST, init_builtin_symbols};
+use mia::context::Context;
+use mia::mia::AST;
 //
 macro_rules! test {
     ($name:tt, $lhs:expr, $rhs:expr) => {
         #[test]
         pub fn $name() {
-            init_builtin_symbols();
+            let mut ctx = Context::new();
             match parser::parse($lhs.as_bytes()) {
-                IResult::Done(_, a) => assert_eq!(format!("{}", eval::fold_list(a.as_slice()).unwrap()), $rhs),
+                IResult::Done(_, a) => assert_eq!(format!("{}",
+                                            eval::fold_list(a.as_slice(), &mut ctx).unwrap()), $rhs),
                 IResult::Error(e)   => panic!(format!("{:?}", e)),
                 _                   => panic!("unknown error."),
             }
