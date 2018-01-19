@@ -2,8 +2,6 @@ use nom::*;
 use std::str;
 use std::str::FromStr;
 use mia::{Function, Special, AST, build_symbol, quoted};
-use function;
-use special;
 
 // Literals
 fn is_bin_digit(byte: u8) -> bool { byte == b'0' || byte == b'1' }

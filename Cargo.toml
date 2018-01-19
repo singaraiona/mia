@@ -7,6 +7,9 @@ authors = ["Anton <singaraiona@gmail.com>"]
 nom = "^3.2"
 fnv = "*"
 lazy_static = "*"
+dynasm = "*"
+dynasmrt = "*"
+
 
 [[bin]]
 name = "repl"

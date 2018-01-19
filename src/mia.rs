@@ -1,11 +1,6 @@
 use std::fmt;
 use std::mem;
 use std::cell::UnsafeCell;
-use function;
-use special;
-use stack::Stack;
-use eval;
-use context::*;
 
 pub const FMT_ITEMS_LIMIT: usize = 30;
 
@@ -73,29 +68,31 @@ macro_rules! LONG     { ($v:expr)          => { AST::Vlong(Box::new($v))        
 macro_rules! FLOAT    { ($v:expr)          => { AST::Vfloat(Box::new($v))                           } }
 macro_rules! LIST     { ($v:expr)          => { AST::List(Box::new($v))                             } }
 
-pub type Value    = Result<AST, Error>;
-pub type Vvalue   = Result<Vec<AST>, Error>;
-// Evaluates all arguments before call
-pub type Function = fn(&[AST], &mut Context) -> Value;
-// It's up to calee to decide if arguments need evaluation
-pub type Special  = fn(&[AST], &mut Context) -> Value;
-
-lazy_static! {
-    static ref _FUNCTIONS: [(&'static str, Function);9] =
-        [("+",      function::plus), ("-",     function::minus),
-         ("til",     function::til), ("=",     function::equal),
-         ("eval",  eval::fold_list), ("prin",   function::prin),
-         ("prinl", function::prinl), ("pp",       function::pp),
-         ("load",   function::load)];
-
-    static ref _SPECIALS: [(&'static str, Special);8] =
-        [("setq",   special::setq), ("de",           special::de),
-         ("quote", special::quote), ("'",         special::quote),
-         ("time",   special::time), ("for",     special::forcond),
-         ("if",   special::ifcond), ("while", special::whilecond)];
+#[derive(Clone, Copy, Debug)]
+pub enum Function {
+    Plus,
+    Minus
 }
 
-pub fn quoted(a: AST) -> AST { LIST!(vec![SPECIAL!(special::quote), a]) }
+#[derive(Clone, Copy, Debug)]
+pub enum Special {
+    Setq,
+    De,
+    Quote
+}
+
+lazy_static! {
+    static ref _FUNCTIONS: [(&'static str, Function);2] =
+        [("+", Function::Plus), ("-", Function::Minus)];
+
+    static ref _SPECIALS: [(&'static str, Special);3] =
+        [("setq", Special::Setq), ("de", Special::De),
+         ("quote", Special::Quote)];
+}
+
+thread_local!(static _SYMBOLS: UnsafeCell<Vec<String>> = UnsafeCell::new(Vec::new()));
+
+pub fn quoted(a: AST) -> AST { LIST!(vec![SPECIAL!(Special::Quote), a]) }
 
 #[derive(Clone)]
 pub struct Lambda {
@@ -115,23 +112,6 @@ pub enum AST {
     Vlong(Box<Vec<i64>>),
     Vfloat(Box<Vec<f64>>),
     List(Box<Vec<AST>>),
-}
-
-impl PartialEq for AST {
-    fn eq(&self, other: &AST) -> bool {
-        if mem::discriminant(self) != mem::discriminant(other) { return false; }
-        match (self, other) {
-            (&AST::Long(l),       &AST::Long(r))       => l == r,
-            (&AST::Float(l),      &AST::Float(r))      => l == r,
-            (&AST::Symbol(l),     &AST::Symbol(r))     => l == r,
-            (&AST::Function(l),   &AST::Function(r))   => l as i64 == r as i64,
-            (&AST::Special(l),    &AST::Special(r))    => l as i64 == r as i64,
-            (&AST::Vlong(ref l),  &AST::Vlong(ref r))  => l == r,
-            (&AST::Vfloat(ref l), &AST::Vfloat(ref r)) => l == r,
-            (&AST::List(ref l),   &AST::List(ref r))   => l.iter().zip(r.iter()).all(|(l, r)| l == r),
-            _                                          => false,
-        }
-    }
 }
 
 // Avoid match destructuring when we exactly know the type
@@ -162,23 +142,16 @@ impl AST {
     }
 }
 
+#[macro_export]
 macro_rules! format_seq { ($l:expr) => {
     {
-        let _suf = if $l.len() < FMT_ITEMS_LIMIT { "" } else { ".." };
-        format!("{}{}", $l.iter().take(FMT_ITEMS_LIMIT).map(|v| format!("{}", v))
+        let _suf = if $l.len() < $crate::mia::FMT_ITEMS_LIMIT { "" } else { ".." };
+        format!("{}{}", $l.iter().take($crate::mia::FMT_ITEMS_LIMIT).map(|v| format!("{}", v))
                         .collect::<Vec<_>>().join(" "), _suf)
     }
 }}
 
 macro_rules! format_list { ($l:expr) => { format!("({})", format_seq!($l)) } }
-
-macro_rules! format_builtin {
-    ($p:expr,$s:expr) => {
-        $p.iter().map(|x| (x.0, x.1 as i64))
-        .find(|&x| x.1 == $s as i64).map(|x| x.0.to_string())
-        .unwrap_or(format!("Builtin: {} can't be formatted.", $s as i64))
-    }
-}
 
 impl fmt::Display for AST {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -187,19 +160,15 @@ impl fmt::Display for AST {
             AST::Float(x)      => write!(f, "{}", x),
             AST::String(ref x) => write!(f, "\"{}\"", x),
             AST::Symbol(x)     => write!(f, "{}", symbol_to_str(x)),
-            AST::Function(x)   => write!(f, "{}", format_builtin!(_FUNCTIONS, x)),
+            AST::Function(ref x)   => write!(f, "{:?}", x),
             AST::Lambda(ref x) => write!(f, "({} {})", format_list!(x.args), format_seq!(x.body)),
-            AST::Special(x)    => write!(f, "{}", format_builtin!(_SPECIALS, x)),
+            AST::Special(ref x)    => write!(f, "{:?}", x),
             AST::List(ref x)   => write!(f, "{}", format_list!(x)),
             AST::Vlong(ref x)  => write!(f, "#l{}", format_list!(x)),
             AST::Vfloat(ref x) => write!(f, "#f{}", format_list!(x)),
             _ => write!(f, "sym"),
         }
     }
-}
-
-thread_local! {
-    pub static _SYMBOLS: UnsafeCell<Vec<String>> = UnsafeCell::new(Vec::new());
 }
 
 pub fn new_symbol(sym: String) -> usize {
@@ -219,4 +188,9 @@ pub fn build_symbol(sym: &str) -> AST {
     for f in _FUNCTIONS.iter() { if f.0 == sym { return AST::Function(f.1) } }
     for s in _SPECIALS.iter()  { if s.0 == sym { return AST::Special(s.1) } }
     symbol!(new_symbol(sym.to_string()))
+}
+
+pub fn init_symbols() {
+    let _ = build_symbol("NIL");
+    let _ = build_symbol("T");
 }
