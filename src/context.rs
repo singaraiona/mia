@@ -1,13 +1,15 @@
+use dynasmrt::{self, DynasmApi, DynasmLabelApi};
 use stack::Stack;
 use mia::{Error, AST, symbol_to_str};
 
 pub struct Context {
     pub stack: Stack,
+    pub jitbl: Option<dynasmrt::ExecutableBuffer>,
 }
 
 impl Context {
     pub fn new() -> Self {
-        let mut c = Context { stack: Stack::new() };
+        let mut c = Context { stack: Stack::new(), jitbl: None };
         c.init_builtin_symbols();
         c
     }

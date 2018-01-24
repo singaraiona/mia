@@ -1,11 +1,14 @@
+use dynasmrt::{self, DynasmApi, DynasmLabelApi};
 use mia::*;
 use parser;
 use std::io::Write;
 use std::fs::File;
 use std::io::prelude::*;
+use std::mem;
 use nom::IResult;
 use eval;
 use context::Context;
+use jit;
 
 //macro_rules! fun1 {
     //($name:tt, $lambda:expr) => {
@@ -17,12 +20,29 @@ use context::Context;
 //}
 
 pub fn plus(args: &[AST], ctx: &mut Context) -> Value {
-    args.iter().cloned().fold(Ok(NIL!()), |acc, x|
-        match (acc, x) {
-                (Ok(NIL!()),       AST::Long(v)) => Ok(long!(v)),
-                (Ok(AST::Long(u)), AST::Long(v)) => Ok(long!(u + v)),
-                _                                => args_err!(args),
-        })
+    match (&args[0], &args[1]) {
+        (&AST::Long(l), &AST::Long(r)) => {
+            if let Some(ref mut buf) = ctx.jitbl {
+            println!("JIT!");
+                let plus_fn: jit::JitDyad<i64> = unsafe { mem::transmute(buf.as_ptr()) };
+                Ok(long!(plus_fn(l, r)))
+            } else {
+                let mut jit = dynasmrt::x64::Assembler::new();
+                jit::plus_i64(&mut jit);
+                let buf = jit.finalize().unwrap();
+                let plus_fn: jit::JitDyad<i64> = unsafe { mem::transmute(buf.as_ptr()) };
+                ctx.jitbl = Some(buf);
+                Ok(long!(plus_fn(l, r)))
+            }
+        }
+        _ => args_err!(args),
+    }
+    //args.iter().cloned().fold(Ok(NIL!()), |acc, x|
+        //match (acc, x) {
+                //(Ok(NIL!()),       AST::Long(v)) => Ok(long!(v)),
+                //(Ok(AST::Long(u)), AST::Long(v)) => Ok(long!(u + v)),
+                //_                                => args_err!(args),
+        //})
 }
 
 pub fn minus(args: &[AST], ctx: &mut Context) -> Value {
