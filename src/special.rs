@@ -1,7 +1,10 @@
+use dynasmrt::{self, DynasmApi, DynasmLabelApi};
 use mia::*;
 use eval::*;
 use std::time::Instant;
+use std::mem;
 use context::Context;
+use jit;
 
 pub fn quote(args: &[AST], ctx: &mut Context) -> Value {
     match args.len() {
@@ -55,13 +58,20 @@ pub fn forcond(args: &[AST], ctx: &mut Context) -> Value {
 pub fn whilecond(args: &[AST], ctx: &mut Context) -> Value {
     //ctx.push_frame();
     //let smap = sym!("@").symbol();
-    while !eval(&args[0], ctx)?.is_nil() {
-        //let cond = eval(&args[0], ctx)?;
-        //if cond.is_nil() { break; }
-        //ctx.insert_entry(smap, cond);
-        eval(&args[1], ctx);
-        //let _ = fold_list(&args[1..], ctx);
-    }
-    //ctx.pop_frame();
-    Ok(NIL!())
+    let mut jit = dynasmrt::x64::Assembler::new();
+    jit::while_cond(&mut jit);
+    let buf = jit.finalize().unwrap();
+    let whle: extern "win64" fn(i64, i64) -> i64 = unsafe { mem::transmute(buf.as_ptr()) };
+    let ret = whle(0, 100000000);
+    Ok(long!(ret))
+
+    //while !eval(&args[0], ctx)?.is_nil() {
+        ////let cond = eval(&args[0], ctx)?;
+        ////if cond.is_nil() { break; }
+        ////ctx.insert_entry(smap, cond);
+        //eval(&args[1], ctx);
+        ////let _ = fold_list(&args[1..], ctx);
+    //}
+    ////ctx.pop_frame();
+    //Ok(NIL!())
 }

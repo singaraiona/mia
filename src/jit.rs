@@ -18,3 +18,14 @@ pub fn plus_i64(jit: &mut dynasmrt::x64::Assembler) {
         ; ret
     );
 }
+
+pub fn while_cond(jit: &mut dynasmrt::x64::Assembler) {
+    dynasm!(jit
+        ; mov rax, rcx
+        ; ->start_loop:
+        ; inc rax
+        ; cmp rax, rdx
+        ; jl ->start_loop
+        ; ret
+    );
+}
