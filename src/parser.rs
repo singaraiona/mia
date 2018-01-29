@@ -1,8 +1,7 @@
 use nom::*;
 use std::str;
 use std::str::FromStr;
-use mia::{Function, Special, AST, build_symbol, quoted};
-use function;
+use mia::{Special, AST, build_symbol, quoted};
 use special;
 
 // Literals

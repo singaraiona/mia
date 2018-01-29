@@ -58,14 +58,17 @@ pub fn forcond(args: &[AST], ctx: &mut Context) -> Value {
 pub fn whilecond(args: &[AST], ctx: &mut Context) -> Value {
     //ctx.push_frame();
     //let smap = sym!("@").symbol();
-    let mut jit = dynasmrt::x64::Assembler::new();
-    jit::while_cond(&mut jit);
-    let buf = jit.finalize().unwrap();
-    let whle: extern "win64" fn(i64, i64) -> i64 = unsafe { mem::transmute(buf.as_ptr()) };
-    let ret = whle(0, 100000000);
+    let mut ops = dynasmrt::x64::Assembler::new();
+    jit::compile(&args[1], &mut ops, ctx);
+    let buf = ops.finalize().unwrap();
+    let whle: extern "win64" fn() -> i64 = unsafe { mem::transmute(buf.as_ptr()) };
+    let mut ret = 0;
+    //for i in 0..100 {
+        ret = whle();
+    //}
     Ok(long!(ret))
 
-    //while !eval(&args[0], ctx)?.is_nil() {
+    //while !eval(&args[0], ctx)?.is_nil() {}
         ////let cond = eval(&args[0], ctx)?;
         ////if cond.is_nil() { break; }
         ////ctx.insert_entry(smap, cond);

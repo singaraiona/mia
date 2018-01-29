@@ -19,5 +19,6 @@ pub mod jit;
 pub mod eval;
 pub mod stack;
 pub mod context;
-pub mod function;
+pub mod dyad;
+pub mod polyad;
 pub mod special;

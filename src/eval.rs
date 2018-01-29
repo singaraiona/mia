@@ -26,7 +26,8 @@ pub fn eval(ast: &AST, ctx: &mut Context) -> Value {
 #[inline]
 fn call(car: &AST, cdr: &[AST], ctx: &mut Context) -> Value {
     match *car {
-        AST::Function(f) => (f)(cdr.iter().map(|x| eval(x, ctx)).collect::<Vvalue>()?.as_slice(), ctx),
+        AST::Dyad(f) => (f)(&eval(&cdr[0], ctx)?, &eval(&cdr[1], ctx)?, ctx),
+        AST::Polyad(f) => (f)(cdr.iter().map(|x| eval(x, ctx)).collect::<Vvalue>()?.as_slice(), ctx),
         AST::Special(f)  => (f)(cdr, ctx),
         AST::Lambda(box Lambda { ref args, ref body }) => {
             //ctx.push_frame();

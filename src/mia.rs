@@ -1,11 +1,14 @@
 use std::fmt;
 use std::mem;
 use std::cell::UnsafeCell;
-use function;
+use dyad;
+use polyad;
 use special;
 use stack::Stack;
 use eval;
+use dynasmrt;
 use context::*;
+use std::rc::Rc;
 
 pub const FMT_ITEMS_LIMIT: usize = 30;
 
@@ -43,7 +46,7 @@ macro_rules! eval_err   { ($($x:expr),+) => { Err(eval_error!($($x),+))         
 
 // Common errors
 macro_rules! nyi_error   { ()                 => { eval_error!(func!(), "nyi.")                                     } }
-macro_rules! args_error  { ($a:expr)          => { eval_error!(func!(), "invalid args:", format_list!($a))          } }
+macro_rules! args_error  { ($($a:expr),+)     => { eval_error!(func!(), "invalid args: [", $($a),+, "]")            } }
 macro_rules! call_error  { ($a:expr)          => { eval_error!(func!(), "call:", $a, "is not callable.")            } }
 macro_rules! undef_error { ($a:expr)          => { eval_error!(func!(), "undefined symbol:", $a)                    } }
 macro_rules! bound_error { ($($a:expr),+)     => { eval_error!(func!(), "index out of bounds:", $($a),+)            } }
@@ -51,7 +54,7 @@ macro_rules! io_error    { ($($a:expr),+)     => { eval_error!(func!(), "I/O:", 
 macro_rules! arity_error { ($x:expr, $y:expr) => { eval_error!(func!(), "expected", $x, "arguments,", $y, "passed.") } }
 
 macro_rules! nyi_err     { ()             => { Err(nyi_error!())                                                    } }
-macro_rules! args_err    { ($a:expr)      => { Err(args_error!($a))                                                 } }
+macro_rules! args_err    { ($($a:expr),+) => { Err(args_error!($($a),+))                                            } }
 macro_rules! call_err    { ($a:expr)      => { Err(call_error!($a))                                                 } }
 macro_rules! undef_err   { ($a:expr)      => { Err(undef_error!($a))                                                } }
 macro_rules! bound_err   { ($($a:expr),+) => { Err(bound_error!($($a),+))                                           } }
@@ -73,20 +76,22 @@ macro_rules! LONG     { ($v:expr)          => { AST::Vlong(Box::new($v))        
 macro_rules! FLOAT    { ($v:expr)          => { AST::Vfloat(Box::new($v))                           } }
 macro_rules! LIST     { ($v:expr)          => { AST::List(Box::new($v))                             } }
 
-pub type Value    = Result<AST, Error>;
-pub type Vvalue   = Result<Vec<AST>, Error>;
+pub type Value   = Result<AST, Error>;
+pub type Vvalue  = Result<Vec<AST>, Error>;
 // Evaluates all arguments before call
-pub type Function = fn(&[AST], &mut Context) -> Value;
+pub type Dyad    = fn(&AST, &AST, &mut Context) -> Value;
+pub type Polyad  = fn(&[AST], &mut Context) -> Value;
 // It's up to calee to decide if arguments need evaluation
-pub type Special  = fn(&[AST], &mut Context) -> Value;
+pub type Special = fn(&[AST], &mut Context) -> Value;
 
 lazy_static! {
-    static ref _FUNCTIONS: [(&'static str, Function);9] =
-        [("+",      function::plus), ("-",     function::minus),
-         ("til",     function::til), ("=",     function::equal),
-         ("eval",  eval::fold_list), ("prin",   function::prin),
-         ("prinl", function::prinl), ("pp",       function::pp),
-         ("load",   function::load)];
+    static ref _DYADS: [(&'static str, Dyad);3] =
+        [("+",  dyad::plus), ("-", dyad::minus),
+         ("=", dyad::equal)];
+    static ref _POLYADS: [(&'static str, Polyad);6] =
+        [("til",   polyad::til), ("eval",  eval::fold_list),
+         ("prin", polyad::prin), ("prinl",   polyad::prinl),
+         ("pp",     polyad::pp), ("load",     polyad::load)];
 
     static ref _SPECIALS: [(&'static str, Special);8] =
         [("setq",   special::setq), ("de",           special::de),
@@ -109,12 +114,14 @@ pub enum AST {
     Float(f64),
     Symbol(usize),
     String(Box<String>),
-    Function(Function),
+    Dyad(Dyad),
+    Polyad(Polyad),
     Lambda(Box<Lambda>),
     Special(Special),
     Vlong(Box<Vec<i64>>),
     Vfloat(Box<Vec<f64>>),
     List(Box<Vec<AST>>),
+    Compiled(Rc<Box<dynasmrt::ExecutableBuffer>>),
 }
 
 impl PartialEq for AST {
@@ -124,7 +131,8 @@ impl PartialEq for AST {
             (&AST::Long(l),       &AST::Long(r))       => l == r,
             (&AST::Float(l),      &AST::Float(r))      => l == r,
             (&AST::Symbol(l),     &AST::Symbol(r))     => l == r,
-            (&AST::Function(l),   &AST::Function(r))   => l as i64 == r as i64,
+            (&AST::Dyad(l),       &AST::Dyad(r))       => l as i64 == r as i64,
+            (&AST::Polyad(l),     &AST::Polyad(r))     => l as i64 == r as i64,
             (&AST::Special(l),    &AST::Special(r))    => l as i64 == r as i64,
             (&AST::Vlong(ref l),  &AST::Vlong(ref r))  => l == r,
             (&AST::Vfloat(ref l), &AST::Vfloat(ref r)) => l == r,
@@ -187,13 +195,14 @@ impl fmt::Display for AST {
             AST::Float(x)      => write!(f, "{}", x),
             AST::String(ref x) => write!(f, "\"{}\"", x),
             AST::Symbol(x)     => write!(f, "{}", symbol_to_str(x)),
-            AST::Function(x)   => write!(f, "{}", format_builtin!(_FUNCTIONS, x)),
+            AST::Dyad(x)       => write!(f, "{}", format_builtin!(_DYADS, x)),
+            AST::Polyad(x)     => write!(f, "{}", format_builtin!(_POLYADS, x)),
             AST::Lambda(ref x) => write!(f, "({} {})", format_list!(x.args), format_seq!(x.body)),
             AST::Special(x)    => write!(f, "{}", format_builtin!(_SPECIALS, x)),
             AST::List(ref x)   => write!(f, "{}", format_list!(x)),
             AST::Vlong(ref x)  => write!(f, "#l{}", format_list!(x)),
             AST::Vfloat(ref x) => write!(f, "#f{}", format_list!(x)),
-            _ => write!(f, "sym"),
+            _ => write!(f, "nyi"),
         }
     }
 }
@@ -216,7 +225,8 @@ pub fn new_symbol(sym: String) -> usize {
 pub fn symbol_to_str(sym: usize) -> &'static str { unsafe { _SYMBOLS.with(|s| &(*s.get())[sym]) } }
 
 pub fn build_symbol(sym: &str) -> AST {
-    for f in _FUNCTIONS.iter() { if f.0 == sym { return AST::Function(f.1) } }
+    for d in _DYADS.iter() { if d.0 == sym { return AST::Dyad(d.1) } }
+    for f in _POLYADS.iter() { if f.0 == sym { return AST::Polyad(f.1) } }
     for s in _SPECIALS.iter()  { if s.0 == sym { return AST::Special(s.1) } }
     symbol!(new_symbol(sym.to_string()))
 }
