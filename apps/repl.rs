@@ -4,7 +4,7 @@ extern crate nom;
 use nom::IResult;
 use std::io::{self, Read, Write};
 use mia::parser;
-use mia::eval;
+use mia::polyad;
 use mia::mia::AST;
 use mia::context::Context;
 
@@ -19,7 +19,7 @@ fn main() {
         let size = io::stdin().read(&mut input).expect("STDIN error.");
         match parser::parse(&input[..size]) {
             IResult::Done(_, a) => {
-                match eval::fold_list(a.as_slice(), &mut ctx) {
+                match polyad::fold_list(a.as_ptr(), a.len(), &mut ctx) {
                     Ok(e)  => println!("-> {}", e),
                     Err(e) => println!("-> {}", e)
                 }

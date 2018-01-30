@@ -80,7 +80,7 @@ pub type Value   = Result<AST, Error>;
 pub type Vvalue  = Result<Vec<AST>, Error>;
 // Evaluates all arguments before call
 pub type Dyad    = fn(&AST, &AST, &mut Context) -> Value;
-pub type Polyad  = fn(&[AST], &mut Context) -> Value;
+pub type Polyad  = extern "win64" fn(*const AST, usize, &mut Context) -> Value;
 // It's up to calee to decide if arguments need evaluation
 pub type Special = fn(&[AST], &mut Context) -> Value;
 
@@ -89,9 +89,9 @@ lazy_static! {
         [("+",  dyad::plus), ("-", dyad::minus),
          ("=", dyad::equal)];
     static ref _POLYADS: [(&'static str, Polyad);6] =
-        [("til",   polyad::til), ("eval",  eval::fold_list),
-         ("prin", polyad::prin), ("prinl",   polyad::prinl),
-         ("pp",     polyad::pp), ("load",     polyad::load)];
+        [("til",   polyad::til), ("eval", polyad::fold_list),
+         ("prin", polyad::prin), ("prinl",    polyad::prinl),
+         ("pp",     polyad::pp), ("load",      polyad::load)];
 
     static ref _SPECIALS: [(&'static str, Special);8] =
         [("setq",   special::setq), ("de",           special::de),

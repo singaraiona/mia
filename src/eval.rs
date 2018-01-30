@@ -1,7 +1,6 @@
 use mia::*;
 use context::Context;
-
-pub fn fold_list(list: &[AST], ctx: &mut Context) -> Value { list.iter().try_fold(NIL!(), |_, x| eval(x, ctx)) }
+use polyad::fold_list;
 
 pub fn eval_list(list: &[AST], ctx: &mut Context) -> Value {
     Ok(LIST!(list.iter().map(|x| eval(x, ctx)).collect::<Vvalue>()?))
@@ -27,16 +26,19 @@ pub fn eval(ast: &AST, ctx: &mut Context) -> Value {
 fn call(car: &AST, cdr: &[AST], ctx: &mut Context) -> Value {
     match *car {
         AST::Dyad(f) => (f)(&eval(&cdr[0], ctx)?, &eval(&cdr[1], ctx)?, ctx),
-        AST::Polyad(f) => (f)(cdr.iter().map(|x| eval(x, ctx)).collect::<Vvalue>()?.as_slice(), ctx),
+        AST::Polyad(f) => {
+            let args = cdr.iter().map(|x| eval(x, ctx)).collect::<Vvalue>()?;
+            (f)(args.as_ptr(), args.len(), ctx)
+        }
         AST::Special(f)  => (f)(cdr, ctx),
         AST::Lambda(box Lambda { ref args, ref body }) => {
-            //ctx.push_frame();
+            ctx.push_frame();
             for (s, v) in args.iter().zip(cdr.iter()) {
                 let e = eval(v, ctx)?;
                 ctx.insert_entry(s.symbol(), e);
             }
-            let r = fold_list(body.as_slice(), ctx);
-            //ctx.pop_frame();
+            let r = fold_list(body.as_ptr(), body.len(), ctx);
+            ctx.pop_frame();
             r
         },
         AST::Vlong(ref l) => {

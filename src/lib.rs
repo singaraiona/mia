@@ -15,6 +15,7 @@ extern crate dynasmrt;
 #[macro_use]
 pub mod mia;
 pub mod parser;
+#[macro_use]
 pub mod jit;
 pub mod eval;
 pub mod stack;
