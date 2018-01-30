@@ -56,21 +56,12 @@ pub fn forcond(args: &[AST], ctx: &mut Context) -> Value {
 }
 
 pub fn whilecond(args: &[AST], ctx: &mut Context) -> Value {
-    //ctx.push_frame();
-    //let smap = sym!("@").symbol();
     let mut compiler = jit::Compiler::new(ctx);
     let buf = compiler.compile(&args[1]);
-    //for i in 0..100 {
-    jit_call!(compiler, buf)
-    //}
 
-    //while !eval(&args[0], ctx)?.is_nil() {}
-        ////let cond = eval(&args[0], ctx)?;
-        ////if cond.is_nil() { break; }
-        ////ctx.insert_entry(smap, cond);
-        //eval(&args[1], ctx);
-        ////let _ = fold_list(&args[1..], ctx);
-    //}
-    ////ctx.pop_frame();
-    //Ok(NIL!())
+    while !eval(&args[0], ctx)?.is_nil() {
+        jit_call!(compiler, buf);
+    }
+
+    Ok(NIL!())
 }
