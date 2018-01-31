@@ -33,11 +33,14 @@ named!(string<String>, delimited!(tag!("\""), string_content, tag!("\"")));
 named!(symbol<&str>,   map_res!(alt!(alphanumeric | tag!("@")), str::from_utf8));
 named!(verb<&str>,     map_res!(
     alt!(
-        tag!("+") |
-        tag!("-") |
-        tag!("*") |
-        tag!("/") |
-        tag!("=") |
+        tag!("+")  |
+        tag!("-")  |
+        tag!("*")  |
+        tag!("/")  |
+        tag!("=")  |
+        tag!("<>") |
+        tag!(">")  |
+        tag!("<")  |
         tag!("'")), str::from_utf8));
 named!(
     string_content<String>,

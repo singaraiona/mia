@@ -17,15 +17,6 @@ pub fn setq(args: &[AST], ctx: &mut Context) -> Value {
     let e = eval(&args[1], ctx)?;
     ctx.insert_entry(args[0].symbol(), e);
     Ok(T!())
-
-    //match (&args[0], &args[1]) {
-        //(&AST::Symbol(l), rhs) => {
-            //let e = eval(rhs, ctx)?;
-            //ctx.insert_entry(l as usize, e);
-            //Ok(rhs.clone())
-        //},
-        //_ => { args_err!(args) },
-    //}
 }
 
 pub fn de(args: &[AST], ctx: &mut Context) -> Value {
@@ -57,11 +48,6 @@ pub fn forcond(args: &[AST], ctx: &mut Context) -> Value {
 
 pub fn whilecond(args: &[AST], ctx: &mut Context) -> Value {
     let mut compiler = jit::Compiler::new(ctx);
-    let buf = compiler.compile(&args[1]);
-
-    while !eval(&args[0], ctx)?.is_nil() {
-        jit_call!(compiler, buf);
-    }
-
-    Ok(NIL!())
+    let buf = compiler.compile_loop(&args[0], &args[1]);
+    jit_call!(compiler.ret, &buf)
 }

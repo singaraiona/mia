@@ -85,9 +85,10 @@ pub type Polyad  = extern "win64" fn(*const AST, usize, &mut Context) -> Value;
 pub type Special = fn(&[AST], &mut Context) -> Value;
 
 lazy_static! {
-    static ref _DYADS: [(&'static str, Dyad);3] =
+    static ref _DYADS: [(&'static str, Dyad);6] =
         [("+",  dyad::plus), ("-", dyad::minus),
-         ("=", dyad::equal)];
+         ("=",    dyad::eq), ("<>",   dyad::ne),
+         ("<",    dyad::lt), (">",    dyad::gt)];
     static ref _POLYADS: [(&'static str, Polyad);6] =
         [("til",   polyad::til), ("eval", polyad::fold_list),
          ("prin", polyad::prin), ("prinl",    polyad::prinl),

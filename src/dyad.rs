@@ -17,6 +17,20 @@ pub fn minus(lhs: &AST, rhs: &AST, ctx: &mut Context) -> Value {
     nyi_err!()
 }
 
-pub fn equal(lhs: &AST, rhs: &AST, ctx: &mut Context) -> Value {
+pub fn eq(lhs: &AST, rhs: &AST, ctx: &mut Context) -> Value {
     if lhs == rhs { Ok(T!()) } else { Ok(NIL!()) }
+}
+
+pub fn ne(lhs: &AST, rhs: &AST, ctx: &mut Context) -> Value {
+    if lhs != rhs { Ok(T!()) } else { Ok(NIL!()) }
+}
+
+pub fn lt(lhs: &AST, rhs: &AST, ctx: &mut Context) -> Value {
+    nyi_err!()
+    //if lhs < rhs { Ok(T!()) } else { Ok(NIL!()) }
+}
+
+pub fn gt(lhs: &AST, rhs: &AST, ctx: &mut Context) -> Value {
+    nyi_err!()
+    //if lhs > rhs { Ok(T!()) } else { Ok(NIL!()) }
 }

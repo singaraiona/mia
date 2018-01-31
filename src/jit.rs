@@ -42,6 +42,7 @@ pub extern "win64" fn prinl(offset: *const AST, len: usize, ctx: &mut Context) -
     1
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum Ret {
     Long,
     Float,
@@ -56,6 +57,23 @@ pub struct Compiler<'a> {
 impl<'a> Compiler<'a> {
     pub fn new(ctx: &'a mut Context) -> Self {
         Compiler { ctx: ctx, ret: Ret::Nil }
+    }
+
+    pub fn compile_loop(&mut self, cond: &AST, body: &AST) -> ExecutableBuffer {
+        let mut ops = Assembler::new();
+        dynasm!(ops
+            ; mov rax, 0
+            ; ->loop_1:
+        );
+        self.compile_body(body, &mut ops);
+        dynasm!(ops
+            ; pop rax
+        );
+        self.compile_body(cond, &mut ops);
+        dynasm!(ops
+            ; ret
+        );
+        ops.finalize().unwrap()
     }
 
     pub fn compile(&mut self, ast: &AST) -> ExecutableBuffer {
@@ -75,8 +93,17 @@ impl<'a> Compiler<'a> {
                     AST::Dyad(d) => {
                         self.compile_body(&l[2], ops);
                         self.compile_body(&l[1], ops);
-                        compile_binop_i64!(ops, add);
-                        self.ret = Ret::Long;
+                        if d as i64 == dyad::lt as i64 {
+                            dynasm!(ops
+                                ; pop rax
+                                ; pop rcx
+                                ; cmp rax, rcx
+                                ; jl ->loop_1
+                            );
+                        } else {
+                            compile_binop_i64!(ops, add);
+                            self.ret = Ret::Long;
+                        }
                     },
                     AST::Polyad(f) => {
                         let fun = get_compiled(f);
@@ -102,31 +129,37 @@ impl<'a> Compiler<'a> {
                 );
                 self.ret = Ret::Long;
             }
+            AST::Symbol(l) => {
+                match l {
+                    0 => dynasm!(ops; mov rax, 0; push rax),
+                    1 => dynasm!(ops; mov rax, 1; push rax),
+                    2 => dynasm!(ops; push rax),
+                    _ => unimplemented!(),
+                }
+                self.ret = Ret::Long;
+            }
             _ => unimplemented!(),
         }
     }
 }
 
 macro_rules! jit_call {
-    ($c:expr, $buf:expr) => {
-        {
-           match $c.ret {
-                $crate::jit::Ret::Long => {
-                    let call_fn: extern "win64" fn() -> i64 = unsafe { mem::transmute($buf.as_ptr()) };
-                    Ok(long!(call_fn()))
-                }
-                $crate::jit::Ret::Float => {
-                    let call_fn: extern "win64" fn() -> f64 = unsafe { mem::transmute($buf.as_ptr()) };
-                    Ok(float!(call_fn()))
-                }
-                $crate::jit::Ret::Nil=> {
-                    let call_fn: extern "win64" fn() -> i64 = unsafe { mem::transmute($buf.as_ptr()) };
-                    let _ = call_fn();
-                    Ok(NIL!())
-                }
-                _ => unimplemented!(),
-           }
+   ($c:expr, $buf:expr) => {
+        match $c {
+            $crate::jit::Ret::Long => {
+                let call_fn: extern "win64" fn() -> i64 = unsafe { mem::transmute($buf.as_ptr()) };
+                Ok(long!(call_fn()))
+            }
+            $crate::jit::Ret::Float => {
+                let call_fn: extern "win64" fn() -> f64 = unsafe { mem::transmute($buf.as_ptr()) };
+                Ok(float!(call_fn()))
+            }
+            $crate::jit::Ret::Nil=> {
+                let call_fn: extern "win64" fn() -> i64 = unsafe { mem::transmute($buf.as_ptr()) };
+                let _ = call_fn();
+                Ok(NIL!())
+            }
+            _ => nyi_err!(),
         }
     }
 }
-//
